@@ -13,7 +13,7 @@
 - **Middleware**: Next 16 เปลี่ยนชื่อเป็น `src/proxy.ts` ใช้แค่เช็คเบื้องต้นว่ามี session cookie สิทธิ์จริงตรวจใน `requireUser()` / `requireRole()`
 - **เวลา**: ทุกคอลัมน์ DateTime เป็น `timestamptz` เพื่อให้ SQL รายงานรายเดือนคิดตามเวลาไทยได้ถูก
 - **เงิน**: ภาษีเก็บเป็น basis points (`vatRateBp` 700 = 7%) ส่วนราคาสินค้าจะเก็บเป็นจำนวนเต็มหน่วยสตางค์ (ตัดสินใจใน M2)
-- **Docker**: เลื่อนไปทำใน M8 เพราะเครื่องพัฒนาไม่ได้เปิด Docker ระหว่างพัฒนาใช้ embedded PostgreSQL ที่ `C:\Users\3intz.SLT\quotation-jcp-devdb` (port 55433)
+- **Docker**: เลื่อนไปทำใน M8 เพราะเครื่องพัฒนาไม่ได้เปิด Docker ระหว่างพัฒนาใช้ embedded PostgreSQL ที่ `%USERPROFILE%\quotation-jcp-devdb` (port 55433)
 - **Rate limit การล็อกอิน**: 30 ครั้ง/นาที/IP เพราะทั้งออฟฟิศอาจใช้ IP เดียวกัน ส่วนการเดารหัสผ่านถูกกันด้วยการล็อกรายบัญชี
 - **ล็อกบัญชีแบบ atomic**: จองสิทธิ์ลองรหัสผ่านด้วย `UPDATE … RETURNING` ก่อนตรวจรหัสผ่าน ยิงพร้อมกันกี่คำขอก็ตรวจรหัสผ่านได้ไม่เกิน 5 ครั้ง
 - **endpoint ของ Better Auth ที่ห้ามเรียกจากเบราว์เซอร์**: `/admin/*`, `/update-user`, `/change-password`, `/two-factor/disable` และอื่น ๆ (ดู `src/server/domain/auth-routes.ts`) แอปเรียก endpoint เหล่านี้เฉพาะจากฝั่ง server (`auth.api`) ผ่านการตรวจสิทธิ์ ด่าน onboarding และ audit log ของแอป

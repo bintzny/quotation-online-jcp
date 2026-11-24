@@ -14,7 +14,7 @@
 1. เปิดฐานข้อมูลสำหรับพัฒนา (embedded PostgreSQL, port 55433) แล้วเปิดค้างไว้
 
    ```powershell
-   node C:\Users\3intz.SLT\quotation-jcp-devdb\pg.mjs
+   node $env:USERPROFILE\quotation-jcp-devdb\pg.mjs
    ```
 
 2. ตั้งค่าครั้งแรก
