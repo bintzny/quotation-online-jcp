@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quotation Online JCP
 
-## Getting Started
+ระบบใบเสนอราคาออนไลน์ — Next.js 16 + TypeScript + Prisma 7 + PostgreSQL + Better Auth
 
-First, run the development server:
+- ความต้องการ: [docs/requirements.md](docs/requirements.md)
+- สถาปัตยกรรมและลำดับงาน: [docs/architecture.md](docs/architecture.md)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## สถานะ
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **M0 เสร็จ**: ล็อกอิน, ลืมรหัสผ่าน, บังคับเปลี่ยนรหัสผ่านครั้งแรก, ล็อกบัญชีเมื่อผิด 5 ครั้ง, 2FA (บังคับผู้บริหาร/แอดมิน), จัดการผู้ใช้และบริษัท, ประวัติการแก้ไข, ไทย/อังกฤษ
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## เริ่มพัฒนาในเครื่อง (Windows)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. เปิดฐานข้อมูลสำหรับพัฒนา (embedded PostgreSQL, port 55433) แล้วเปิดค้างไว้
 
-## Learn More
+   ```powershell
+   node C:\Users\3intz.SLT\quotation-jcp-devdb\pg.mjs
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. ตั้งค่าครั้งแรก
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```powershell
+   Copy-Item .env.example .env   # แล้วใส่ BETTER_AUTH_SECRET
+   npm install
+   npm run db:deploy
+   npm run db:seed:demo          # สร้างแอดมิน + ข้อมูลตัวอย่าง รหัสผ่านอยู่ใน .dev-credentials.txt
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. รันเว็บ: `npm run dev` แล้วเปิด http://localhost:3000
 
-## Deploy on Vercel
+## คำสั่งที่ใช้บ่อย
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| คำสั่ง | ใช้ทำอะไร |
+|---|---|
+| `npm run dev` | รันเว็บโหมดพัฒนา |
+| `npm test` | unit test (Vitest) |
+| `npm run typecheck` | ตรวจ TypeScript |
+| `npm run lint` | ESLint |
+| `npm run db:migrate` | สร้าง/รัน migration หลังแก้ `prisma/schema.prisma` |
+| `npm run db:seed` | สร้างแอดมินคนแรก (ถ้ายังไม่มีผู้ใช้) |
+| `node --env-file=.env tests/smoke/m0-auth.mjs` | smoke test ล็อกอิน/สิทธิ์/การโจมตี (ต้องรันเว็บอยู่ และ seed demo ใหม่ก่อน ใช้เวลาประมาณ 2 นาที) |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## หมายเหตุ
+
+- อีเมล (ลืมรหัสผ่าน) ยังไม่ส่งจริงจนถึง M3 — โหมดพัฒนาจะพิมพ์ลิงก์ไว้ใน console ของเซิร์ฟเวอร์
+- `.env` และ `.dev-credentials.txt` ห้าม commit (อยู่ใน `.gitignore` แล้ว)

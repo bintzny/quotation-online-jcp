@@ -1,0 +1,177 @@
+// Quotation Online JCP — database schema
+// Auth tables (user / session / account / verification / twoFactor) follow Better Auth's
+// expected shape (core + admin plugin + two-factor plugin). App fields are added on User.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Auth (Better Auth) ─────────────────────────────
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+
+  // admin plugin — role holds comma-separated roles, e.g. "sales,executive"
+  role             String?   @default("sales")
+  banned           Boolean?  @default(false)
+  banReason        String?
+  banExpires       DateTime? @db.Timestamptz(3)
+  // two-factor plugin
+  twoFactorEnabled Boolean?  @default(false)
+
+  // app fields
+  phone              String?
+  employeeCode       String?   @unique // salesperson code, used to match Express data
+  companyId          String?
+  mustChangePassword Boolean   @default(true)
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime? @db.Timestamptz(3)
+
+  company        Company?      @relation(fields: [companyId], references: [id])
+  extraCompanies UserCompany[]
+  sessions       Session[]
+  accounts       Account[]
+  twoFactors     TwoFactor[]
+  auditLogs      AuditLog[]
+
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime @db.Timestamptz(3)
+  token          String   @unique
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model TwoFactor {
+  id          String @id
+  secret      String
+  backupCodes String
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime? @db.Timestamptz(3)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+// ───────────────────────────── Companies ─────────────────────────────
+
+/// One of the 3 issuing companies (separate legal entities, own letterhead and numbering).
+model Company {
+  id                  String   @id @default(cuid())
+  code                String   @unique // document prefix, e.g. BKK → QT-BKK-2611-0001
+  nameTh              String
+  nameEn              String?
+  taxId               String
+  branchCode          String   @default("00000") // 00000 = head office
+  addressTh           String
+  addressEn           String?
+  phone               String?
+  email               String?
+  website             String?
+  logoKey             String? // object-storage key (M3)
+  vatRegistered       Boolean  @default(true)
+  vatRateBp           Int      @default(700) // basis points: 700 = 7.00%
+  defaultValidityDays Int      @default(30)
+  quoteTermsTh        String?
+  quoteTermsEn        String?
+  senderEmail         String? // From address for emails sent by the system
+  senderName          String?
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+
+  users         User[]
+  userCompanies UserCompany[]
+
+  @@map("company")
+}
+
+/// Extra companies a user may issue quotations for (besides their main company).
+model UserCompany {
+  userId    String
+  companyId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("user_company")
+}
+
+// ───────────────────────────── Audit ─────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String // e.g. user.create, company.update
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
