@@ -28,7 +28,7 @@ function fullPath(key: string): string {
 }
 
 /** A new, unguessable key: newKey("logos", companyId, "png") → logos/<id>-<random>.png */
-export function newKey(folder: "logos" | "signatures" | "quotations" | "outbox", owner: string, ext: "png" | "jpg" | "pdf" | "json"): string {
+export function newKey(folder: "logos" | "signatures" | "quotations" | "po" | "outbox", owner: string, ext: "png" | "jpg" | "pdf" | "json"): string {
   const safeOwner = owner.replace(/[^A-Za-z0-9_-]/g, "");
   return `${folder}/${safeOwner}-${randomBytes(9).toString("base64url")}.${ext}`;
 }

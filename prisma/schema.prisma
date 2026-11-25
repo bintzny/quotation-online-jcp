@@ -45,6 +45,7 @@ model User {
   ownerCandidacies CustomerOwnerCandidate[]
   ownedQuotations  Quotation[]              @relation("QuotationOwner")
   notifications    Notification[]
+  followups        Followup[]
   sessions         Session[]
   accounts         Account[]
   twoFactors       TwoFactor[]
@@ -194,6 +195,7 @@ model Customer {
   ownerId          String?
   owner            User?          @relation("CustomerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   lastPurchaseDate DateTime?      @db.Date // M6
+  nextFollowupOn   DateTime?      @db.Date // next customer-level follow-up (from the latest one)
   createdById      String?
   createdAt        DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
@@ -203,12 +205,14 @@ model Customer {
   ownerCandidates CustomerOwnerCandidate[]
   expressCodes    CustomerExpressCode[]
   quotations      Quotation[]
+  followups       Followup[]
 
   // Blocks duplicate juristic customers (NULL tax IDs never collide).
   @@unique([taxId, branchCode])
   @@index([ownerId])
   @@index([status])
   @@index([name])
+  @@index([ownerId, nextFollowupOn])
   @@map("customer")
 }
 
@@ -381,16 +385,30 @@ model Quotation {
   cancelledAt  DateTime?   @db.Timestamptz(3)
   copiedFromId String?
   pdfLanguage  DocLanguage @default(TH) // language of the PDF given to the customer
-  version      Int         @default(1) // optimistic lock for edits from two tabs
-  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+
+  // M5: follow-up and closing
+  nextFollowupOn  DateTime?   @db.Date // from the latest quotation follow-up; null = nothing scheduled
+  lastFollowupAt  DateTime?   @db.Timestamptz(3)
+  staleNotifiedAt DateTime?   @db.Timestamptz(3) // "no follow-up for 7 days" bell, once per quiet period
+  expiredAt       DateTime?   @db.Timestamptz(3)
+  closedAt        DateTime?   @db.Timestamptz(3) // Won or Lost (final: cannot be undone)
+  poNumber        String?
+  poDate          DateTime?   @db.Date
+  poKey           String? // optional PO file (PDF/PNG/JPEG) in private storage
+  lostReason      LostReason?
+  lostNote        String?
+  version         Int         @default(1) // optimistic lock for edits from two tabs
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(3)
 
   items     QuotationItem[]
   revisions QuotationRevision[]
   emails    QuotationEmail[]
   approvals ApprovalRequest[]
+  followups Followup[]
 
   @@index([ownerId, status])
+  @@index([ownerId, nextFollowupOn])
   @@index([companyId, createdAt])
   @@index([customerId])
   @@index([status, validUntil])
@@ -484,6 +502,8 @@ enum NotificationType {
   APPROVAL_COUNTERED
   APPROVAL_WITHDRAWN
   APPROVAL_REMINDER
+  QUOTATION_EXPIRED // M5
+  FOLLOWUP_STALE // M5: sent quotation without a follow-up for 7 days
 }
 
 /// The bell in the header.
@@ -562,4 +582,40 @@ model AuditLog {
   @@index([actorId])
   @@index([createdAt])
   @@map("audit_log")
+}
+
+enum LostReason {
+  PRICE
+  COMPETITOR
+  NO_BUDGET
+  OTHER
+}
+
+enum FollowupChannel {
+  PHONE
+  LINE
+  VISIT
+  EMAIL
+  OTHER
+}
+
+/// A contact with the customer: about one quotation, or about the customer in general
+/// (quotationId null). Kept as a log: never edited or deleted.
+model Followup {
+  id          String          @id @default(cuid())
+  customerId  String
+  customer    Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  quotationId String?
+  quotation   Quotation?      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  contactedOn DateTime        @db.Date
+  channel     FollowupChannel
+  detail      String
+  nextDate    DateTime?       @db.Date
+  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@index([quotationId, createdAt])
+  @@index([customerId, createdAt])
+  @@map("followup")
 }

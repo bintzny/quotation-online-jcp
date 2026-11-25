@@ -67,3 +67,13 @@ export function isSafeStorageKey(key: string): boolean {
 export function pdfFileName(displayNumber: string, suffix = ""): string {
   return `${displayNumber.replace(/[^A-Za-z0-9-]/g, "_")}${suffix}.pdf`;
 }
+
+export const MAX_PO_BYTES = 10 * 1024 * 1024; // the customer's purchase order (PDF or a photo)
+
+export type PoFileType = { ext: "pdf" | "png" | "jpg"; contentType: "application/pdf" | "image/png" | "image/jpeg" };
+
+/** A PO file is a PDF, PNG or JPEG by its bytes. */
+export function sniffPoFile(buf: Uint8Array): PoFileType | null {
+  if (isPdf(buf)) return { ext: "pdf", contentType: "application/pdf" };
+  return sniffImage(buf);
+}

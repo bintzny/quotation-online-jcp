@@ -119,7 +119,14 @@
     "welcome": "Welcome, {name}",
     "yourRoles": "Roles",
     "yourCompany": "Company",
-    "comingSoon": "Dashboards and reports will be added in the next development stages."
+    "comingSoon": "Dashboards and reports will be added in the next development stages.",
+    "dueTitle": "Follow up today / overdue",
+    "dueEmpty": "Nothing to follow up today",
+    "dueToday": "Today",
+    "overdue": "{days, plural, one {# day} other {# days}} overdue",
+    "generalContact": "General contact",
+    "quietTitle": "Sent with no follow-up for more than 7 days",
+    "lastContact": "Last contact {date}"
   },
   "users": {
     "title": "Users",
@@ -241,7 +248,18 @@
     "tooManyItems": "A quotation can have at most 100 items",
     "emailList": "One of the email addresses is not valid (separate several addresses with commas)",
     "tooManyRecipients": "Up to 5 email addresses",
-    "rejectReasonRequired": "Please give the reason for not approving"
+    "rejectReasonRequired": "Please give the reason for not approving",
+    "date": "Choose a valid date",
+    "contactedInFuture": "The contact date cannot be in the future",
+    "contactedTooOld": "The contact date can be at most 1 year ago",
+    "nextBeforeContact": "The next follow-up cannot be before the contact date",
+    "nextInPast": "The next follow-up must be today or later",
+    "nextTooFar": "The next follow-up must be within 1 year",
+    "poDateInFuture": "The PO date cannot be in the future",
+    "poDateTooOld": "The PO date can be at most 1 year ago",
+    "poTooLarge": "The PO file must be 10 MB or smaller",
+    "poFileType": "The PO file must be a PDF, JPG or PNG",
+    "lostNoteRequired": "Enter details when the reason is Other"
   },
   "customers": {
     "title": "Customers",
@@ -573,7 +591,9 @@
       "APPROVAL_REJECTED": "{actor} did not approve {number} ({customer})",
       "APPROVAL_COUNTERED": "{actor} set new prices and approved {number} ({customer})",
       "APPROVAL_WITHDRAWN": "{actor} withdrew the approval request for {number} ({customer})",
-      "APPROVAL_REMINDER": "The approval request for {number} ({customer}) has waited more than 4 business hours"
+      "APPROVAL_REMINDER": "The approval request for {number} ({customer}) has waited more than 4 business hours",
+      "QUOTATION_EXPIRED": "Quotation {number} ({customer}) has expired",
+      "FOLLOWUP_STALE": "Quotation {number} ({customer}) was sent with no follow-up for more than 7 days"
     }
   },
   "approvals": {
@@ -648,5 +668,73 @@
     "counterTotalPreview": "Grand total with the new prices: {total}",
     "totalWhenRequested": "Total when requested",
     "asRequestedNote": "Lines and total as they were when approval was requested; the quotation may have changed since."
+  },
+  "followups": {
+    "title": "Follow-ups",
+    "customerTitle": "Customer contacts",
+    "customerHint": "Contacts not about a particular quotation. Visible to the customer's owner, executives and administrators only.",
+    "add": "Record follow-up",
+    "contactedOn": "Contact date",
+    "channel": "Channel",
+    "channels": {
+      "PHONE": "Phone",
+      "LINE": "LINE",
+      "VISIT": "Visit",
+      "EMAIL": "Email",
+      "OTHER": "Other"
+    },
+    "detail": "Details",
+    "detailPlaceholder": "e.g. The customer is comparing prices and will reply next week",
+    "nextDate": "Next follow-up date",
+    "nextDateHint": "Leave empty if no further follow-up is needed",
+    "quick": {
+      "tomorrow": "Tomorrow",
+      "d3": "In 3 days",
+      "d7": "In 1 week"
+    },
+    "clearNext": "No follow-up",
+    "empty": "No follow-ups recorded yet",
+    "by": "Recorded by {name}",
+    "next": "Next follow-up {date}",
+    "nextScheduled": "Next follow-up: {date}",
+    "noneScheduled": "No next follow-up scheduled",
+    "saved": "Follow-up recorded",
+    "won": "Won",
+    "lost": "Lost",
+    "wonTitle": "Mark as won",
+    "wonHint": "The full quotation counts: {amount} baht before VAT. If the customer ordered only some lines, close this window and revise the quotation to match the PO first.",
+    "poNumber": "Customer PO number",
+    "poDate": "PO date",
+    "poFile": "PO file (optional)",
+    "poFileHint": "PDF, JPG or PNG, up to 10 MB. You can attach it later.",
+    "confirmWon": "Confirm won",
+    "lostTitle": "Mark as lost",
+    "lostHint": "Choose why the customer did not order. This is used in the lost-reason report.",
+    "lostReason": "Reason",
+    "lostReasons": {
+      "PRICE": "Price too high",
+      "COMPETITOR": "Customer chose another supplier",
+      "NO_BUDGET": "No budget",
+      "OTHER": "Other"
+    },
+    "lostNote": "Details (optional)",
+    "lostNoteRequired": "Details (required for Other)",
+    "confirmLost": "Confirm lost",
+    "finalWarning": "This cannot be changed or undone once saved.",
+    "wonSaved": "Marked as won",
+    "lostSaved": "Marked as lost",
+    "wonBanner": "Won · PO {po} dated {date}",
+    "poDownload": "Download PO file",
+    "poAttach": "Attach PO file",
+    "poAttachHint": "PDF, JPG or PNG, up to 10 MB. Can be attached once.",
+    "poMissing": "No PO file attached",
+    "lostBanner": "Lost · Reason: {reason}",
+    "expiredBanner": "Expired (valid until {date}). If the customer accepts the same prices you can still mark it won or lost. To change prices or validity, revise the quotation.",
+    "errors": {
+      "notOpen": "This quotation is not in a status that allows this.",
+      "notOwner": "Only the customer's owner can record this.",
+      "cannotAttach": "The PO file cannot be attached (only once, and only to a won quotation)."
+    },
+    "poAttached": "PO file attached"
   }
 }

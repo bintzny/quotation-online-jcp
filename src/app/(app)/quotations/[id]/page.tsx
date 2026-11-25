@@ -1,6 +1,12 @@
 import { notFound } from "next/navigation";
 import { getFormatter, getTranslations } from "next-intl/server";
-import { AlertTriangleIcon, CheckCircle2Icon, ClockIcon, XCircleIcon } from "lucide-react";
+import { AlertTriangleIcon, CalendarClockIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, TrophyIcon, XCircleIcon } from "lucide-react";
+import { canCloseQuotation, canRecordFollowup, dateOnlyString, today } from "@/server/domain/followups";
+import { quotationFollowups } from "@/server/services/followups";
+import { recordFollowupAction } from "@/server/actions/followups";
+import { FollowupForm } from "@/components/followup-form";
+import { FollowupLog } from "@/components/followup-log";
+import { AttachPo, CloseQuotation } from "./close-quotation";
 import { approvalHistory } from "@/server/services/approvals";
 import { ApprovalHistory } from "./approval-history";
 import { requireUser } from "@/server/session";
@@ -49,6 +55,12 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
   const watermark = pdfWatermark(q);
   const emailDefaults = { to: q.contactEmail ?? "", senderConfigured: !!q.company.senderEmail };
   const history = await approvalHistory(q.id);
+  const followups = await quotationFollowups(q.id);
+  const canFollowUp = canRecordFollowup(viewer, q);
+  const canClose = canCloseQuotation(viewer, q);
+  const todayStr = dateOnlyString(today());
+  const day = (d: Date) => format.dateTime(d, { dateStyle: "medium", timeZone: "UTC" });
+  const isOwner = q.ownerId === user.id && user.roles.includes("sales");
   const pending = history.find((h) => h.status === "PENDING") ?? null;
   const lastDecision = history.find((h) => h.status !== "PENDING" && h.status !== "WITHDRAWN") ?? null;
   const approvalActions = {
@@ -69,7 +81,12 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
         title={<span className="font-mono">{number}</span>}
         backHref="/quotations"
         backLabel={t("quotations.title")}
-        actions={<QuotationActions id={q.id} version={q.version} allowed={allowed} watermark={watermark} email={emailDefaults} approval={approvalActions} />}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {canClose && <CloseQuotation id={q.id} version={q.version} today={todayStr} amount={formatSatang(q.afterDiscountSatang)} />}
+            <QuotationActions id={q.id} version={q.version} allowed={allowed} watermark={watermark} email={emailDefaults} approval={approvalActions} />
+          </div>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -100,6 +117,36 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
         <p className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200" role="status">
           <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
           {lastDecision?.status === "COUNTERED" ? t("approvals.counteredBanner") : t("approvals.approvedBanner")}
+        </p>
+      )}
+      {q.status === "WON" && (
+        <div className="grid gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200" role="status">
+          <p className="flex items-start gap-2">
+            <TrophyIcon className="mt-0.5 size-4 shrink-0" />
+            <span>{t("followups.wonBanner", { po: q.poNumber ?? "", date: q.poDate ? day(q.poDate) : "" })}</span>
+          </p>
+          {q.poKey ? (
+            <a href={`/quotations/${q.id}/po`} target="_blank" rel="noopener" className="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline">
+              <FileDownIcon className="size-4" />
+              {t("followups.poDownload")}
+            </a>
+          ) : isOwner ? (
+            <AttachPo id={q.id} />
+          ) : (
+            <p className="text-muted-foreground">{t("followups.poMissing")}</p>
+          )}
+        </div>
+      )}
+      {q.status === "LOST" && q.lostReason && (
+        <p className="rounded-lg border bg-muted/40 p-3 text-sm" role="status">
+          {t("followups.lostBanner", { reason: t(`followups.lostReasons.${q.lostReason}`) })}
+          {q.lostNote ? ` · ${q.lostNote}` : ""}
+        </p>
+      )}
+      {q.status === "EXPIRED" && (
+        <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm" role="status">
+          <CalendarClockIcon className="mt-0.5 size-4 shrink-0" />
+          {t("followups.expiredBanner", { date: day(q.validUntil) })}
         </p>
       )}
       {q.status === "CANCELLED" && q.cancelReason && (
@@ -191,6 +238,19 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
         <FormSection title={t("quotations.sectionNotes")}>
           {q.note && <div className="text-sm"><div className="text-muted-foreground">{t("quotations.note")}</div><p className="whitespace-pre-line">{q.note}</p></div>}
           {q.terms && <div className="text-sm"><div className="text-muted-foreground">{t("quotations.terms")}</div><p className="whitespace-pre-line">{q.terms}</p></div>}
+        </FormSection>
+      )}
+
+      {(canFollowUp || followups.length > 0) && (
+        <FormSection title={t("followups.title")}>
+          {(q.status === "SENT" || q.status === "EXPIRED") && (
+            <p className="flex items-center gap-2 text-sm">
+              <CalendarClockIcon className="size-4 shrink-0 text-muted-foreground" />
+              {q.nextFollowupOn ? t("followups.nextScheduled", { date: day(q.nextFollowupOn) }) : t("followups.noneScheduled")}
+            </p>
+          )}
+          {canFollowUp && <FollowupForm action={recordFollowupAction.bind(null, q.id)} today={todayStr} idPrefix="qf" />}
+          <FollowupLog entries={followups} />
         </FormSection>
       )}
 

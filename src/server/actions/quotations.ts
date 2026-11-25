@@ -443,8 +443,8 @@ export async function reviseAction(id: string, version: number): Promise<Quotati
       const covered = q.requiresApproval && approvalCovers(await latestApprovedLines(id, tx), linesFromItems(q.items));
       const status = statusAfterEdit(q.requiresApproval, covered);
       const updated = await tx.quotation.updateMany({
-        where: { id, version, status: "SENT", ownerId: user.id },
-        data: { status, revision: { increment: 1 }, sentAt: null, version: { increment: 1 } },
+        where: { id, version, status: q.status, ownerId: user.id },
+        data: { status, revision: { increment: 1 }, sentAt: null, expiredAt: null, version: { increment: 1 } },
       });
       if (updated.count !== 1) throw new Refusal({ error: "quotations.errors.staleVersion" });
       await writeAudit({ actorId: user.id, action: "quotation.revise", entityType: "quotation", entityId: id, before: { revision: q.revision }, after: { revision: q.revision + 1, status } }, tx);

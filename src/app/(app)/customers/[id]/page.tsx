@@ -14,6 +14,11 @@ import { FormSection } from "@/components/form";
 import { CustomerForm } from "../customer-form";
 import { ContactsSection } from "./contacts-section";
 import { OwnerForm } from "./owner-form";
+import { canRecordCustomerFollowup, canSeeCustomerFollowups, dateOnlyString, today } from "@/server/domain/followups";
+import { customerFollowups } from "@/server/services/followups";
+import { recordCustomerFollowupAction } from "@/server/actions/followups";
+import { FollowupForm } from "@/components/followup-form";
+import { FollowupLog } from "@/components/followup-log";
 
 export default async function CustomerPage({ params, searchParams }: PageProps<"/customers/[id]">) {
   const user = await requireUser();
@@ -49,6 +54,9 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const notice = noticeText(c.owner?.name ?? null);
   const manager = canChangeOwner(viewer);
   const owners = manager ? (await listAssignableOwners()).map((o) => ({ id: o.id, name: o.name })) : [];
+  const showFollowups = canSeeCustomerFollowups(viewer, c);
+  const canFollowUp = canRecordCustomerFollowup(viewer, c);
+  const followups = showFollowups ? await customerFollowups(c.id) : [];
   const userName = (uid: string | null) => (uid ? data.historyNames[uid] ?? "?" : t("customers.noOwner"));
 
   return (
@@ -91,6 +99,17 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
         canEdit={data.canEdit}
         contacts={c.contacts.map((x) => ({ id: x.id, name: x.name, position: x.position, phone: x.phone, email: x.email, isPrimary: x.isPrimary }))}
       />
+
+      {showFollowups && (canFollowUp || followups.length > 0) && (
+        <FormSection title={t("followups.customerTitle")}>
+          <p className="text-sm text-muted-foreground">{t("followups.customerHint")}</p>
+          {c.nextFollowupOn && (
+            <p className="text-sm">{t("followups.nextScheduled", { date: format.dateTime(c.nextFollowupOn, { dateStyle: "medium", timeZone: "UTC" }) })}</p>
+          )}
+          {canFollowUp && <FollowupForm action={recordCustomerFollowupAction.bind(null, c.id)} today={dateOnlyString(today())} idPrefix="cf" />}
+          <FollowupLog entries={followups} />
+        </FormSection>
+      )}
 
       <FormSection title={t("customers.sectionOwner")}>
         <p className="text-sm">

@@ -8,8 +8,10 @@ const nextConfig: NextConfig = {
   // partial prefetching are left off: all data is read fresh on each request.
   reactCompiler: true,
   experimental: {
-    // Excel imports (customers/products) are uploaded through server actions.
-    serverActions: { bodySizeLimit: "10mb" },
+    // Excel imports and PO files (≤ 10 MB) are uploaded through server actions; the proxy
+    // buffers request bodies up to its own limit, so both leave room for the form overhead.
+    serverActions: { bodySizeLimit: "12mb" },
+    proxyClientMaxBodySize: "12mb",
   },
   output: "standalone",
   serverExternalPackages: ["pg", "puppeteer-core"],

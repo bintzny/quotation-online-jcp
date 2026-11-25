@@ -11,7 +11,8 @@ import { esc } from "@/server/pdf/quotation-template";
 type Tx = Prisma.TransactionClient;
 
 export type NotificationKind =
-  | "APPROVAL_REQUESTED" | "APPROVAL_APPROVED" | "APPROVAL_REJECTED" | "APPROVAL_COUNTERED" | "APPROVAL_WITHDRAWN" | "APPROVAL_REMINDER";
+  | "APPROVAL_REQUESTED" | "APPROVAL_APPROVED" | "APPROVAL_REJECTED" | "APPROVAL_COUNTERED" | "APPROVAL_WITHDRAWN" | "APPROVAL_REMINDER"
+  | "QUOTATION_EXPIRED" | "FOLLOWUP_STALE";
 
 export type NotificationData = { number: string; customer: string; actor?: string; approvalId?: string };
 

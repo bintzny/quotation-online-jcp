@@ -189,3 +189,26 @@ export const quotationEmailSchema = z.object({
   ccMe: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
   message: optionalText(2000),
 });
+
+// ── M5: follow-ups and closing ──
+
+const dateOnly = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "date");
+
+export const followupSchema = z.object({
+  contactedOn: dateOnly,
+  channel: z.enum(["PHONE", "LINE", "VISIT", "EMAIL", "OTHER"], { message: "required" }),
+  detail: z.string().trim().min(1, "required").max(2000, "tooLong"),
+  nextDate: z.preprocess(emptyToUndefined, dateOnly.optional()),
+});
+
+export const wonSchema = z.object({
+  poNumber: z.string().trim().min(1, "required").max(50, "tooLong"),
+  poDate: dateOnly,
+});
+
+export const lostSchema = z
+  .object({
+    reason: z.enum(["PRICE", "COMPETITOR", "NO_BUDGET", "OTHER"], { message: "required" }),
+    note: optionalText(500),
+  })
+  .refine((v) => v.reason !== "OTHER" || !!v.note, { path: ["note"], message: "lostNoteRequired" });

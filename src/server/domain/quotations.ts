@@ -64,11 +64,12 @@ export function canMarkSent(viewer: Viewer, q: QuotationRef): boolean {
   return (q.status === "DRAFT" && !q.requiresApproval) || q.status === "APPROVED";
 }
 
+/** A sent (or expired) quotation is changed through a new revision, which gets new dates. */
 export function canRevise(viewer: Viewer, q: QuotationRef): boolean {
-  return isActingOwner(viewer, q) && q.status === "SENT";
+  return isActingOwner(viewer, q) && (q.status === "SENT" || q.status === "EXPIRED");
 }
 
-const CANCELLABLE: readonly QuotationStatus[] = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "SENT"];
+const CANCELLABLE: readonly QuotationStatus[] = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "SENT", "EXPIRED"];
 
 export function canCancel(viewer: Viewer, q: QuotationRef): boolean {
   return isActingOwner(viewer, q) && CANCELLABLE.includes(q.status);
