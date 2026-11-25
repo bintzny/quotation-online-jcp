@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import { getTranslations, getFormatter } from "next-intl/server";
 import { requireUser } from "@/server/session";
-import { canChangeOwner } from "@/server/domain/customers";
+import Link from "next/link";
+import { FileTextIcon } from "lucide-react";
+import { canChangeOwner, canQuoteFor } from "@/server/domain/customers";
+import { canCreateQuotation } from "@/server/domain/quotations";
+import { buttonVariants } from "@/components/ui/button";
 import { getCustomerForViewer, listAssignableOwners } from "@/server/services/customers";
 import { updateCustomerAction } from "@/server/actions/customers";
 import { PageHeader } from "@/components/page-header";
@@ -50,7 +54,17 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   return (
     <div className="grid max-w-3xl gap-8">
       {created && <FlashToast message={t("customers.created")} />}
-      <PageHeader title={c.name} backHref="/customers" backLabel={t("customers.title")} />
+      <PageHeader
+        title={c.name}
+        backHref="/customers"
+        backLabel={t("customers.title")}
+        actions={canCreateQuotation(viewer) && canQuoteFor(viewer, c) && (
+          <Link href={`/quotations/new?customer=${c.id}`} className={buttonVariants()}>
+            <FileTextIcon />
+            {t("quotations.new")}
+          </Link>
+        )}
+      />
       {notice && data.notice.kind !== "own" && (
         <p className="rounded-lg border bg-muted/40 p-4 text-sm" role="status">{notice}</p>
       )}

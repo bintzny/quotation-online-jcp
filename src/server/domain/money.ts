@@ -23,9 +23,9 @@ export const MAX_PRICE_SATANG = 1_000_000_000;
 /**
  * Parse a baht amount typed by a person or read from Excel into satang.
  * Accepts "1,234.5", "1234.50", " 80 ", 80, 80.5. Rejects negatives, more than 2 decimals,
- * text and amounts above MAX_PRICE_SATANG. Returns null when invalid.
+ * text and amounts above `max` (default MAX_PRICE_SATANG). Returns null when invalid.
  */
-export function parseBahtToSatang(input: unknown): number | null {
+export function parseBahtToSatang(input: unknown, max: number = MAX_PRICE_SATANG): number | null {
   let s: string;
   if (typeof input === "number") {
     if (!Number.isFinite(input) || input < 0) return null;
@@ -34,7 +34,7 @@ export function parseBahtToSatang(input: unknown): number | null {
     const cents = input * 100;
     if (Math.abs(cents - Math.round(cents)) > 1e-6) return null;
     const satang = Math.round(cents);
-    return Number.isSafeInteger(satang) && satang <= MAX_PRICE_SATANG ? satang : null;
+    return Number.isSafeInteger(satang) && satang <= max ? satang : null;
   } else if (typeof input === "string") {
     s = input.trim().replace(/^฿/, "").trim();
     // Thousands separators only in the right places: "1,234.50" yes, "1,2,3" no.
@@ -48,7 +48,7 @@ export function parseBahtToSatang(input: unknown): number | null {
   if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
   const [whole, frac = ""] = s.split(".");
   const satang = Number(whole) * 100 + Number(frac.padEnd(2, "0"));
-  if (!Number.isSafeInteger(satang) || satang > MAX_PRICE_SATANG) return null;
+  if (!Number.isSafeInteger(satang) || satang > max) return null;
   return satang;
 }
 

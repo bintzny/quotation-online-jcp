@@ -9,9 +9,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const t = await getTranslations();
   const isAdmin = user.roles.includes("admin");
   const isManager = isAdmin || user.roles.includes("executive");
+  const seesQuotations = user.roles.includes("sales") || user.roles.includes("executive");
 
   const items: NavItem[] = [
     { href: "/", label: t("nav.home"), exact: true },
+    ...(seesQuotations ? [{ href: "/quotations", label: t("nav.quotations") }] : []),
     { href: "/customers", label: t("nav.customers"), exact: false },
     { href: "/products", label: t("nav.products") },
   ];

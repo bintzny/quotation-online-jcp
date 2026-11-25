@@ -140,3 +140,37 @@ export const productSchema = z
     active: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
     description: optionalText(2000),
   });
+
+// ── Quotations ──
+// The editor sends one JSON payload. Amounts arrive as the text people typed and are parsed on
+// the server (parseQuantity / parseBahtToSatang / parsePercent); totals are always recomputed.
+
+const discountInput = z.object({
+  type: z.enum(["NONE", "PERCENT", "AMOUNT"]),
+  value: z.string().trim().max(20).default(""),
+});
+
+export const quotationLineSchema = z.object({
+  productId: z.preprocess(emptyToUndefined, z.string().max(40).optional()),
+  name: z.string().trim().max(300, "tooLong").default(""), // custom lines only
+  unit: z.string().trim().max(30, "tooLong").default(""), // custom lines only
+  quantity: z.string().trim().max(20),
+  unitPrice: z.string().trim().max(20),
+  discount: discountInput,
+});
+
+export const quotationPayloadSchema = z.object({
+  companyId: z.string().min(1, "required").max(40),
+  customerId: z.string().min(1, "required").max(40),
+  contactId: z.preprocess(emptyToUndefined, z.string().max(40).optional()),
+  validityDays: z.coerce.number({ message: "number" }).int("number").min(1, "number").max(365, "number"),
+  creditDays: z.coerce.number({ message: "number" }).int("number").min(0, "number").max(365, "number"),
+  note: optionalText(2000),
+  terms: optionalText(4000),
+  billDiscount: discountInput,
+  items: z.array(quotationLineSchema).min(1, "itemsRequired").max(100, "tooManyItems"),
+  version: z.coerce.number().int().optional(), // edits: the version the editor loaded
+});
+
+export type QuotationPayload = z.infer<typeof quotationPayloadSchema>;
+export type QuotationLinePayload = z.infer<typeof quotationLineSchema>;

@@ -68,7 +68,7 @@ export function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="grid gap-4 rounded-xl border p-4">
+    <fieldset className="grid min-w-0 gap-4 rounded-xl border p-4">
       <legend className="px-1 text-sm font-semibold">{title}</legend>
       {children}
     </fieldset>

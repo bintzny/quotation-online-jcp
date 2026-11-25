@@ -42,6 +42,7 @@ model User {
   extraCompanies   UserCompany[]
   ownedCustomers   Customer[]               @relation("CustomerOwner")
   ownerCandidacies CustomerOwnerCandidate[]
+  ownedQuotations  Quotation[]              @relation("QuotationOwner")
   sessions         Session[]
   accounts         Account[]
   twoFactors       TwoFactor[]
@@ -144,6 +145,8 @@ model Company {
   users                User[]
   userCompanies        UserCompany[]
   customerExpressCodes CustomerExpressCode[]
+  quotations           Quotation[]
+  docSequences         DocSequence[]
 
   @@map("company")
 }
@@ -197,6 +200,7 @@ model Customer {
   ownerHistory    CustomerOwnerHistory[]
   ownerCandidates CustomerOwnerCandidate[]
   expressCodes    CustomerExpressCode[]
+  quotations      Quotation[]
 
   // Blocks duplicate juristic customers (NULL tax IDs never collide).
   @@unique([taxId, branchCode])
@@ -289,8 +293,144 @@ model Product {
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime @updatedAt @db.Timestamptz(3)
 
+  quotationItems QuotationItem[]
+
   @@index([category])
   @@map("product")
+}
+
+// ───────────────────────────── Quotations ─────────────────────────────
+
+enum QuotationStatus {
+  DRAFT
+  PENDING_APPROVAL // M4
+  APPROVED // M4
+  REJECTED // M4
+  SENT
+  WON // M5
+  LOST // M5
+  EXPIRED // M5
+  CANCELLED
+}
+
+enum DiscountType {
+  NONE
+  PERCENT // value in basis points (1000 = 10%)
+  AMOUNT // value in satang
+}
+
+/// Running number per company per month (Bangkok time). Incremented with an atomic upsert.
+model DocSequence {
+  companyId  String
+  yearMonth  String // "2611"
+  lastNumber Int
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, yearMonth])
+  @@map("doc_sequence")
+}
+
+/// Header of a quotation. Money is satang (BigInt for sums), quantities are thousandths.
+/// Customer and company details are copied in when saved, so later edits to the customer do not
+/// change a document already given out.
+model Quotation {
+  id          String          @id @default(cuid())
+  number      String          @unique // QT-BKK-2611-0001 (revision suffix is added for display)
+  revision    Int             @default(0)
+  companyId   String
+  company     Company         @relation(fields: [companyId], references: [id])
+  customerId  String
+  customer    Customer        @relation(fields: [customerId], references: [id])
+  ownerId     String
+  owner       User            @relation("QuotationOwner", fields: [ownerId], references: [id])
+  createdById String
+  status      QuotationStatus @default(DRAFT)
+
+  issueDate    DateTime @db.Date
+  validityDays Int
+  validUntil   DateTime @db.Date
+  creditDays   Int
+
+  // customer snapshot
+  customerName       String
+  customerTaxId      String?
+  customerBranchCode String
+  customerBranchName String?
+  customerAddress    String
+  contactId          String?
+  contactName        String?
+  contactPhone       String?
+  contactEmail       String?
+
+  billDiscountType    DiscountType @default(NONE)
+  billDiscountValue   BigInt       @default(0) // basis points or satang
+  subtotalSatang      BigInt
+  billDiscountSatang  BigInt
+  afterDiscountSatang BigInt
+  vatRateBp           Int
+  vatSatang           BigInt
+  totalSatang         BigInt
+  requiresApproval    Boolean
+
+  note         String?
+  terms        String?
+  cancelReason String?
+  sentAt       DateTime? @db.Timestamptz(3)
+  cancelledAt  DateTime? @db.Timestamptz(3)
+  copiedFromId String?
+  version      Int       @default(1) // optimistic lock for edits from two tabs
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+
+  items     QuotationItem[]
+  revisions QuotationRevision[]
+
+  @@index([ownerId, status])
+  @@index([companyId, createdAt])
+  @@index([customerId])
+  @@index([status, validUntil])
+  @@map("quotation")
+}
+
+model QuotationItem {
+  id              String       @id @default(cuid())
+  quotationId     String
+  quotation       Quotation    @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  position        Int
+  productId       String? // null = free-typed line (always needs approval)
+  product         Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productCode     String?
+  name            String
+  unit            String
+  isService       Boolean      @default(false)
+  quantityMilli   Int // 1.5 units = 1500
+  unitPriceSatang Int
+  listPriceSatang Int? // product price when saved
+  minPriceSatang  Int? // product minimum when saved — never sent to sales users
+  discountType    DiscountType @default(NONE)
+  discountValue   BigInt       @default(0) // basis points or satang
+  discountSatang  BigInt
+  netSatang       BigInt // line amount after the line discount
+  billShareSatang BigInt // part of the bill discount allocated to this line
+  approvalReason  String? // belowMin | customLine | noMinPrice
+
+  @@unique([quotationId, position])
+  @@map("quotation_item")
+}
+
+/// What was given to the customer for each revision (PDF added in M3).
+model QuotationRevision {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revision    Int
+  snapshot    Json
+  pdfKey      String?
+  sentAt      DateTime  @db.Timestamptz(3)
+  sentById    String
+
+  @@unique([quotationId, revision])
+  @@map("quotation_revision")
 }
 
 // ───────────────────────────── Imports ─────────────────────────────
