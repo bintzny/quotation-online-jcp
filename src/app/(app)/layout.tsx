@@ -8,9 +8,16 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   const t = await getTranslations();
   const isAdmin = user.roles.includes("admin");
+  const isManager = isAdmin || user.roles.includes("executive");
 
-  const items: NavItem[] = [{ href: "/", label: t("nav.home"), exact: true }];
+  const items: NavItem[] = [
+    { href: "/", label: t("nav.home"), exact: true },
+    { href: "/customers", label: t("nav.customers"), exact: false },
+    { href: "/products", label: t("nav.products") },
+  ];
+  if (isManager) items.push({ href: "/customers/pending", label: t("nav.pendingOwners") });
   if (isAdmin) {
+    items.push({ href: "/admin/import", label: t("nav.imports") });
     items.push({ href: "/admin/users", label: t("nav.users") });
     items.push({ href: "/admin/companies", label: t("nav.companies") });
   }
@@ -18,7 +25,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:gap-4">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 lg:gap-4">
           <MobileNav items={items} />
           <Link href="/" className="min-w-0 truncate font-semibold tracking-tight">
             {t("common.appName")}

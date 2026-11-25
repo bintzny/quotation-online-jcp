@@ -11,17 +11,23 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 export type NavItem = { href: string; label: string; exact?: boolean };
 
-function isActive(pathname: string, item: NavItem) {
+function matches(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-/** Horizontal links from the sm breakpoint up. */
+/** Only the most specific matching item is active (/customers/pending is not also /customers). */
+function activeHref(pathname: string, items: NavItem[]) {
+  return items.filter((i) => matches(pathname, i)).sort((a, b) => b.href.length - a.href.length)[0]?.href;
+}
+
+/** Horizontal links from the lg breakpoint up. */
 export function AppNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
+  const current = activeHref(pathname, items);
   return (
-    <nav className="hidden min-w-0 items-center gap-1 sm:flex">
+    <nav className="hidden min-w-0 items-center gap-1 lg:flex">
       {items.map((item) => {
-        const active = isActive(pathname, item);
+        const active = item.href === current;
         return (
           <Link
             key={item.href}
@@ -40,14 +46,15 @@ export function AppNav({ items }: { items: NavItem[] }) {
   );
 }
 
-/** Menu button + side sheet below the sm breakpoint. */
+/** Menu button + side sheet below the lg breakpoint. */
 export function MobileNav({ items }: { items: NavItem[] }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const current = activeHref(pathname, items);
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "size-10 sm:hidden" })} aria-label={t("menu")}>
+      <SheetTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "size-10 lg:hidden" })} aria-label={t("menu")}>
         <MenuIcon className="size-5" />
       </SheetTrigger>
       <SheetContent side="left">
@@ -56,7 +63,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
         </SheetHeader>
         <nav className="grid gap-1 px-4">
           {items.map((item) => {
-            const active = isActive(pathname, item);
+            const active = item.href === current;
             return (
               <Link
                 key={item.href}

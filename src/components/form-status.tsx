@@ -11,12 +11,18 @@ export function FormStatus({ state }: { state: FormState }) {
   useEffect(() => {
     if (state?.ok && state.message) toast.success(t(state.message));
   }, [state, t]);
-  if (!state?.error) return null;
-  return (
-    <p className="text-sm text-destructive" role="alert">
-      {t.has(state.error) ? t(state.error) : t("common.genericError")}
-    </p>
-  );
+  if (state?.error) {
+    return (
+      <p className="text-sm text-destructive" role="alert">
+        {t.has(state.error) ? t(state.error) : t("common.genericError")}
+      </p>
+    );
+  }
+  // Safety net: an error on a field the form does not show must still tell the user something.
+  if (state?.fieldErrors && Object.keys(state.fieldErrors).length > 0) {
+    return <p className="text-sm text-destructive" role="alert">{t("validation.checkFields")}</p>;
+  }
+  return null;
 }
 
 /** Translate a field error key from FormState (keys live under "validation"). */

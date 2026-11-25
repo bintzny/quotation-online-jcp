@@ -47,3 +47,4 @@ next-env.d.ts
 
 # local seed credentials
 .dev-credentials.txt
+

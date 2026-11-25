@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // Every page in this app is per-user and behind login, so Cache Components /
   // partial prefetching are left off: all data is read fresh on each request.
   reactCompiler: true,
+  experimental: {
+    // Excel imports (customers/products) are uploaded through server actions.
+    serverActions: { bodySizeLimit: "10mb" },
+  },
   output: "standalone",
   serverExternalPackages: ["pg"],
   turbopack: {

@@ -38,12 +38,14 @@ model User {
   failedLoginCount   Int       @default(0)
   lockedUntil        DateTime? @db.Timestamptz(3)
 
-  company        Company?      @relation(fields: [companyId], references: [id])
-  extraCompanies UserCompany[]
-  sessions       Session[]
-  accounts       Account[]
-  twoFactors     TwoFactor[]
-  auditLogs      AuditLog[]
+  company          Company?                 @relation(fields: [companyId], references: [id])
+  extraCompanies   UserCompany[]
+  ownedCustomers   Customer[]               @relation("CustomerOwner")
+  ownerCandidacies CustomerOwnerCandidate[]
+  sessions         Session[]
+  accounts         Account[]
+  twoFactors       TwoFactor[]
+  auditLogs        AuditLog[]
 
   @@map("user")
 }
@@ -139,8 +141,9 @@ model Company {
   createdAt           DateTime @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime @updatedAt @db.Timestamptz(3)
 
-  users         User[]
-  userCompanies UserCompany[]
+  users                User[]
+  userCompanies        UserCompany[]
+  customerExpressCodes CustomerExpressCode[]
 
   @@map("company")
 }
@@ -154,6 +157,164 @@ model UserCompany {
 
   @@id([userId, companyId])
   @@map("user_company")
+}
+
+// ───────────────────────────── Customers ─────────────────────────────
+
+enum CustomerType {
+  JURISTIC // นิติบุคคล — tax ID required
+  INDIVIDUAL // บุคคลธรรมดา
+}
+
+enum CustomerStatus {
+  ACTIVE
+  PENDING_OWNER // import found different salespeople; nobody may quote until resolved
+  LOST // marked lost by the owner (M6)
+}
+
+/// One shared customer list for all 3 companies. Each customer has at most one owner.
+model Customer {
+  id               String         @id @default(cuid())
+  type             CustomerType
+  name             String
+  taxId            String? // 13 digits; required for JURISTIC
+  branchCode       String         @default("00000") // 00000 = head office
+  branchName       String?
+  address          String
+  phone            String?
+  email            String?
+  creditDays       Int            @default(0)
+  note             String?
+  status           CustomerStatus @default(ACTIVE)
+  ownerId          String?
+  owner            User?          @relation("CustomerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  lastPurchaseDate DateTime?      @db.Date // M6
+  createdById      String?
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
+
+  contacts        CustomerContact[]
+  ownerHistory    CustomerOwnerHistory[]
+  ownerCandidates CustomerOwnerCandidate[]
+  expressCodes    CustomerExpressCode[]
+
+  // Blocks duplicate juristic customers (NULL tax IDs never collide).
+  @@unique([taxId, branchCode])
+  @@index([ownerId])
+  @@index([status])
+  @@index([name])
+  @@map("customer")
+}
+
+model CustomerContact {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String
+  position   String?
+  phone      String?
+  email      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([customerId])
+  @@map("customer_contact")
+}
+
+enum OwnerChangeReason {
+  CREATED // salesperson created the customer
+  IMPORT // set from Express salesperson code
+  QUOTE_CLAIM // first quotation for an unowned customer (M2)
+  TRANSFER // executive/admin changed the owner
+  PENDING_RESOLVED // executive/admin chose among import candidates
+}
+
+/// Every owner change; the change date is used to split sales figures between people.
+model CustomerOwnerHistory {
+  id          String            @id @default(cuid())
+  customerId  String
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  fromUserId  String?
+  toUserId    String?
+  reason      OwnerChangeReason
+  note        String?
+  changedById String?
+  changedAt   DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@index([customerId, changedAt])
+  @@map("customer_owner_history")
+}
+
+/// Salespeople suggested as owner by different Express files, for PENDING_OWNER customers.
+model CustomerOwnerCandidate {
+  customerId String
+  userId     String
+  companyId  String?
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([customerId, userId])
+  @@map("customer_owner_candidate")
+}
+
+/// Customer code in each company's Express database (used to match later imports).
+model CustomerExpressCode {
+  companyId  String
+  code       String
+  customerId String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, code])
+  @@index([customerId])
+  @@map("customer_express_code")
+}
+
+// ───────────────────────────── Products ─────────────────────────────
+
+/// Prices are integer satang (8000 = 80.00 baht), excluding VAT.
+model Product {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  name            String
+  nameEn          String?
+  category        String?
+  unit            String
+  listPriceSatang Int
+  minPriceSatang  Int? // never sent to sales users; null only for service items
+  isService       Boolean  @default(false) // e.g. shipping: never needs approval
+  active          Boolean  @default(true)
+  description     String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([category])
+  @@map("product")
+}
+
+// ───────────────────────────── Imports ─────────────────────────────
+
+enum ImportKind {
+  CUSTOMERS
+  PRODUCTS
+}
+
+model ImportBatch {
+  id            String     @id @default(cuid())
+  kind          ImportKind
+  companyId     String? // customers: which company's Express file
+  fileName      String
+  rowCount      Int
+  createdCount  Int
+  updatedCount  Int
+  conflictCount Int        @default(0)
+  skippedCount  Int        @default(0)
+  createdById   String
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@map("import_batch")
 }
 
 // ───────────────────────────── Audit ─────────────────────────────

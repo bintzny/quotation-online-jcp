@@ -78,3 +78,65 @@ export const companySchema = z.object({
 });
 
 export type CompanyInput = z.infer<typeof companySchema>;
+
+// ── Customers ──
+
+const optionalEmail = z.preprocess(emptyToUndefined, z.string().trim().email("email").max(200, "tooLong").optional());
+
+export const customerSchema = z
+  .object({
+    type: z.enum(["JURISTIC", "INDIVIDUAL"], { message: "customerType" }),
+    name: z.string().trim().min(1, "required").max(200, "tooLong"),
+    taxId: z.preprocess(
+      (v) => (typeof v === "string" ? v.replace(/[\s-]/g, "") : v),
+      z.preprocess(emptyToUndefined, z.string().regex(/^\d{13}$/, "taxId").optional()),
+    ),
+    // Individuals have no branch field in the form: absent or empty means head office.
+    branchCode: z.preprocess(
+      (v) => (v === undefined || v === null || (typeof v === "string" && v.trim() === "") ? "00000" : v),
+      z.string().trim().regex(/^\d{5}$/, "branchCode"),
+    ),
+    branchName: optionalText(120),
+    address: z.string().trim().min(1, "required").max(1000, "tooLong"),
+    phone: optionalText(50),
+    email: optionalEmail,
+    creditDays: z.coerce.number({ message: "number" }).int("number").min(0, "number").max(365, "number"),
+    note: optionalText(2000),
+    // managers may choose the owner when creating; ignored for sales
+    ownerId: z.preprocess(emptyToUndefined, z.string().optional()),
+    // individuals that look like an existing customer need explicit confirmation
+    confirmNotDuplicate: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+  })
+  .refine((d) => d.type !== "JURISTIC" || !!d.taxId, { path: ["taxId"], message: "taxIdRequired" });
+
+export type CustomerInput = z.infer<typeof customerSchema>;
+
+export const contactSchema = z
+  .object({
+    name: z.string().trim().min(1, "required").max(120, "tooLong"),
+    position: optionalText(120),
+    phone: optionalText(50),
+    email: optionalEmail,
+    isPrimary: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+  });
+
+export const changeOwnerSchema = z.object({
+  ownerId: z.preprocess(emptyToUndefined, z.string().optional()),
+  note: optionalText(500),
+});
+
+// ── Products ──
+
+export const productSchema = z
+  .object({
+    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9._/-]*$/, "productCode").max(40, "tooLong"),
+    name: z.string().trim().min(1, "required").max(200, "tooLong"),
+    nameEn: optionalText(200),
+    category: optionalText(60),
+    unit: z.string().trim().min(1, "required").max(30, "tooLong"),
+    listPrice: z.string().trim().min(1, "required"),
+    minPrice: z.string().trim().optional().default(""),
+    isService: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+    active: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+    description: optionalText(2000),
+  });
