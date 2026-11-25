@@ -1,13 +1,17 @@
 import { notFound } from "next/navigation";
 import { getFormatter, getTranslations } from "next-intl/server";
-import { AlertTriangleIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckCircle2Icon, ClockIcon, XCircleIcon } from "lucide-react";
+import { approvalHistory } from "@/server/services/approvals";
+import { ApprovalHistory } from "./approval-history";
 import { requireUser } from "@/server/session";
 import { formatSatang } from "@/server/domain/money";
 import { formatQuantity } from "@/server/domain/pricing";
 import { bahtText } from "@/server/domain/baht-text";
 import { displayNumber } from "@/server/domain/numbering";
 import { basisPointsToPercent } from "@/server/domain/money";
-import { canCancel, canCopy, canEditQuotation, canMarkSent, canRevise, pdfWatermark } from "@/server/domain/quotations";
+import {
+  canCancel, canCopy, canDecideApproval, canEditQuotation, canMarkSent, canRevise, canSubmitForApproval, canWithdrawApproval, pdfWatermark,
+} from "@/server/domain/quotations";
 import { getQuotationForViewer } from "@/server/services/quotations";
 import { PageHeader } from "@/components/page-header";
 import { FlashToast } from "@/components/flash-toast";
@@ -44,6 +48,14 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
   };
   const watermark = pdfWatermark(q);
   const emailDefaults = { to: q.contactEmail ?? "", senderConfigured: !!q.company.senderEmail };
+  const history = await approvalHistory(q.id);
+  const pending = history.find((h) => h.status === "PENDING") ?? null;
+  const lastDecision = history.find((h) => h.status !== "PENDING" && h.status !== "WITHDRAWN") ?? null;
+  const approvalActions = {
+    submit: canSubmitForApproval(viewer, q),
+    withdraw: canWithdrawApproval(viewer, q),
+    decideHref: pending && canDecideApproval(viewer, q) ? `/approvals/${pending.id}` : null,
+  };
   const discountLabel = (type: string, value: number, amount: number) =>
     type === "PERCENT" ? `${basisPointsToPercent(value)}% (${formatSatang(amount)})` : type === "AMOUNT" ? formatSatang(amount) : "";
   const branch = q.customerTaxId
@@ -57,7 +69,7 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
         title={<span className="font-mono">{number}</span>}
         backHref="/quotations"
         backLabel={t("quotations.title")}
-        actions={<QuotationActions id={q.id} version={q.version} allowed={allowed} watermark={watermark} email={emailDefaults} />}
+        actions={<QuotationActions id={q.id} version={q.version} allowed={allowed} watermark={watermark} email={emailDefaults} approval={approvalActions} />}
       />
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -66,10 +78,28 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
         {q.showMin && <span className="text-muted-foreground">· {t("quotations.owner")}: {q.owner.name}</span>}
       </div>
 
-      {q.requiresApproval && (q.status === "DRAFT" || q.status === "REJECTED") && (
+      {q.requiresApproval && q.status === "DRAFT" && (
         <p className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200" role="status">
           <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
           {t("quotations.needsApprovalDetail")}
+        </p>
+      )}
+      {q.status === "PENDING_APPROVAL" && (
+        <p className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200" role="status">
+          <ClockIcon className="mt-0.5 size-4 shrink-0" />
+          {t("approvals.pendingBanner")}
+        </p>
+      )}
+      {q.status === "REJECTED" && lastDecision?.status === "REJECTED" && (
+        <p className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="status">
+          <XCircleIcon className="mt-0.5 size-4 shrink-0" />
+          <span>{t("approvals.rejectedBanner", { note: lastDecision.decisionNote ?? "" })}</span>
+        </p>
+      )}
+      {q.status === "APPROVED" && (
+        <p className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200" role="status">
+          <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
+          {lastDecision?.status === "COUNTERED" ? t("approvals.counteredBanner") : t("approvals.approvedBanner")}
         </p>
       )}
       {q.status === "CANCELLED" && q.cancelReason && (
@@ -163,6 +193,8 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
           {q.terms && <div className="text-sm"><div className="text-muted-foreground">{t("quotations.terms")}</div><p className="whitespace-pre-line">{q.terms}</p></div>}
         </FormSection>
       )}
+
+      <ApprovalHistory history={history} />
 
       {q.revisions.length > 0 && (
         <FormSection title={t("quotations.sectionRevisions")}>

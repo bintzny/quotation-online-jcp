@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { BanIcon, CopyIcon, FileDownIcon, FilePenLineIcon, MailIcon, PencilIcon, SendIcon } from "lucide-react";
+import { BanIcon, CopyIcon, FileDownIcon, FilePenLineIcon, GavelIcon, MailIcon, PencilIcon, SendIcon, Undo2Icon } from "lucide-react";
+import { submitApprovalAction, withdrawApprovalAction } from "@/server/actions/approvals";
 import {
   cancelQuotationAction, copyQuotationAction, markSentAction, reviseAction, sendQuotationEmailAction, type QuotationFormState,
 } from "@/server/actions/quotations";
@@ -19,7 +20,8 @@ import {
 } from "@/components/ui/dialog";
 
 type Allowed = { edit: boolean; send: boolean; revise: boolean; copy: boolean; cancel: boolean };
-type Confirm = "send" | "revise" | "cancel" | "email" | null;
+type Confirm = "send" | "revise" | "cancel" | "email" | "request" | "withdraw" | null;
+type ApprovalActions = { submit: boolean; withdraw: boolean; decideHref: string | null };
 
 export function QuotationActions({
   id,
@@ -27,14 +29,17 @@ export function QuotationActions({
   allowed,
   watermark,
   email,
+  approval,
 }: {
   id: string;
   version: number;
   allowed: Allowed;
   watermark: "draft" | "cancelled" | null;
   email: { to: string; senderConfigured: boolean };
+  approval: ApprovalActions;
 }) {
   const t = useTranslations("quotations");
+  const ta = useTranslations("approvals");
   const tc = useTranslations("common");
   const tv = useTranslations("validation");
   const tAll = useTranslations();
@@ -44,6 +49,7 @@ export function QuotationActions({
   const [reason, setReason] = useState("");
   const [mail, setMail] = useState({ to: email.to, cc: "", ccMe: true, message: "" });
   const [mailErrors, setMailErrors] = useState<Record<string, string>>({});
+  const [approvalReason, setApprovalReason] = useState("");
 
   function run(fn: () => Promise<QuotationFormState>, success?: string) {
     start(async () => {
@@ -63,8 +69,9 @@ export function QuotationActions({
     });
   }
 
-  const dialogText: Record<Exclude<Confirm, null | "email">, { title: string; body: string; action: string }> = {
+  const dialogText: Record<Exclude<Confirm, null | "email" | "request">, { title: string; body: string; action: string }> = {
     send: { title: t("markSent"), body: t("markSentConfirm"), action: t("markSent") },
+    withdraw: { title: ta("withdraw"), body: ta("withdrawConfirm"), action: ta("withdraw") },
     revise: { title: t("revise"), body: t("reviseConfirm"), action: t("revise") },
     cancel: { title: t("cancelQuotation"), body: t("cancelConfirm"), action: t("cancelQuotation") },
   };
@@ -86,6 +93,24 @@ export function QuotationActions({
         <FileDownIcon />
         {watermark === "draft" ? t("pdfDraft") : t("pdf")}
       </a>
+      {approval.decideHref && (
+        <Link href={approval.decideHref} className={buttonVariants()}>
+          <GavelIcon />
+          {ta("decide")}
+        </Link>
+      )}
+      {approval.submit && (
+        <Button onClick={() => { setMailErrors({}); setConfirm("request"); }} disabled={pending}>
+          <SendIcon />
+          {ta("request")}
+        </Button>
+      )}
+      {approval.withdraw && (
+        <Button variant="outline" onClick={() => setConfirm("withdraw")} disabled={pending}>
+          <Undo2Icon />
+          {ta("withdraw")}
+        </Button>
+      )}
       {allowed.edit && (
         <Link href={`/quotations/${id}/edit`} className={buttonVariants({ variant: "outline" })}>
           <PencilIcon />
@@ -156,7 +181,24 @@ export function QuotationActions({
             </DialogFooter>
           </DialogContent>
         )}
-        {confirm && confirm !== "email" && (
+        {confirm === "request" && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{ta("request")}</DialogTitle>
+              <DialogDescription>{ta("requestHint")}</DialogDescription>
+            </DialogHeader>
+            <Field label={ta("reasonLabel")} htmlFor="approval-reason" error={mailError("reason")}>
+              <Textarea id="approval-reason" rows={4} maxLength={1000} value={approvalReason} placeholder={ta("reasonPlaceholder")} onChange={(e) => setApprovalReason(e.target.value)} />
+            </Field>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" disabled={pending} />}>{tc("close")}</DialogClose>
+              <Button disabled={pending || !approvalReason.trim()} onClick={() => run(() => submitApprovalAction(id, version, approvalReason), ta("submitted"))}>
+                {pending ? tc("loading") : ta("requestButton")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+        {confirm && confirm !== "email" && confirm !== "request" && (
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{dialogText[confirm].title}</DialogTitle>
@@ -177,6 +219,7 @@ export function QuotationActions({
                   if (confirm === "send") run(() => markSentAction(id, version), t("markedSent"));
                   if (confirm === "revise") run(() => reviseAction(id, version));
                   if (confirm === "cancel") run(() => cancelQuotationAction(id, version, reason), t("cancelled"));
+                  if (confirm === "withdraw") run(() => withdrawApprovalAction(id, version), ta("withdrawn"));
                 }}
               >
                 {pending ? tc("loading") : dialogText[confirm].action}

@@ -7,9 +7,9 @@ import { prisma } from "@/server/db";
 import { writeAudit } from "@/server/audit";
 import { requireUser, type CurrentUser } from "@/server/session";
 import type { Viewer } from "@/server/domain/customers";
-import { addDays, bangkokDate, formatQuotationNumber, yearMonthKey } from "@/server/domain/numbering";
+import { addDays, bangkokDate, displayNumber, formatQuotationNumber, yearMonthKey } from "@/server/domain/numbering";
 import {
-  canCancel, canCopy, canCreateQuotation, canEditQuotation, canMarkSent, canRevise, type QuotationStatus,
+  canCancel, canCopy, canCreateQuotation, canEditQuotation, canMarkSent, canRevise, statusAfterEdit, type QuotationStatus,
 } from "@/server/domain/quotations";
 import type { ApprovalReason } from "@/server/domain/pricing";
 import {
@@ -21,6 +21,9 @@ import { satangToInput } from "@/server/domain/money";
 import { pdfFileName } from "@/server/domain/files";
 import { buildQuotationDocument, datesIfIssuedNow, documentForSnapshot, renderQuotationPdf } from "@/server/services/quotation-document";
 import { PdfBusyError } from "@/server/pdf/render";
+import { approvalCovers, coveredLines } from "@/server/domain/approvals";
+import { latestApprovedLines, linesFromItems, withdrawPending } from "@/server/services/approvals";
+import { executives, notify } from "@/server/notifications";
 import { quotationEmail } from "@/server/pdf/quotation-email";
 import { formatFrom, sendMail } from "@/server/mail";
 import { deleteObject, newKey, putObject } from "@/server/storage";
@@ -212,11 +215,15 @@ export async function saveQuotationAction(quotationId: string | null, _prev: Quo
         await writeAudit({ actorId: user.id, action: "quotation.create", entityType: "quotation", entityId: q.id, after: { number, ...auditSummary(r) } }, tx);
         return q.id;
       }
+      // An approved quotation stays approved while the decision still covers every line that
+      // needs approval (prices equal or higher); otherwise it goes back to draft.
+      const covered = r.pricing.requiresApproval && approvalCovers(await latestApprovedLines(existing.id, tx), resolvedLines(r));
       // Only the version the editor loaded may be overwritten (two tabs, or a status change meanwhile).
       const updated = await tx.quotation.updateMany({
-        where: { id: existing.id, version: existing.version, status: "DRAFT", ownerId: user.id },
+        where: { id: existing.id, version: existing.version, status: existing.status, ownerId: user.id },
         data: {
           ...headerData(r, d, now),
+          status: statusAfterEdit(r.pricing.requiresApproval, covered),
           version: { increment: 1 },
         },
       });
@@ -237,8 +244,16 @@ export async function saveQuotationAction(quotationId: string | null, _prev: Quo
 // ── Live check while editing ──
 
 export type PricingPreview =
-  | { ok: true; approval: (ApprovalReason | null)[]; requiresApproval: boolean }
+  | { ok: true; approval: (ApprovalReason | null)[]; covered: boolean[]; requiresApproval: boolean }
   | { ok: false };
+
+/** The resolved lines in the shape the approval rules compare. */
+function resolvedLines(r: Resolved) {
+  return r.lines.map((l, i) => ({
+    productId: l.productId, productCode: l.productCode, name: l.name, unit: l.unit, quantityMilli: l.quantityMilli,
+    finalSatang: r.pricing.lines[i].finalSatang, approvalReason: r.pricing.lines[i].approvalReason,
+  }));
+}
 
 /**
  * Tells the editor which lines will need approval. Only a yes/no per line is returned — never the
@@ -258,7 +273,14 @@ export async function previewPricingAction(payloadJson: string, quotationId?: st
     : null;
   const r = await resolveQuotation(viewer, parsed.data, { keepCompanyId: own?.companyId });
   if (!r.ok) return { ok: false };
-  return { ok: true, approval: r.data.pricing.lines.map((l) => l.approvalReason), requiresApproval: r.data.pricing.requiresApproval };
+  // lines still within an earlier approval of this quotation are shown as already approved
+  const approved = own && quotationId ? await latestApprovedLines(String(quotationId)) : null;
+  return {
+    ok: true,
+    approval: r.data.pricing.lines.map((l) => l.approvalReason),
+    covered: coveredLines(approved, resolvedLines(r.data)),
+    requiresApproval: r.data.pricing.requiresApproval,
+  };
 }
 
 // ── Pickers ──
@@ -417,12 +439,15 @@ export async function reviseAction(id: string, version: number): Promise<Quotati
   if (!canRevise(viewerOf(user), q)) return { error: "quotations.errors.cannotRevise" };
   try {
     await prisma.$transaction(async (tx) => {
+      // prices are unchanged: an approval that covered them still does
+      const covered = q.requiresApproval && approvalCovers(await latestApprovedLines(id, tx), linesFromItems(q.items));
+      const status = statusAfterEdit(q.requiresApproval, covered);
       const updated = await tx.quotation.updateMany({
         where: { id, version, status: "SENT", ownerId: user.id },
-        data: { status: "DRAFT", revision: { increment: 1 }, sentAt: null, version: { increment: 1 } },
+        data: { status, revision: { increment: 1 }, sentAt: null, version: { increment: 1 } },
       });
       if (updated.count !== 1) throw new Refusal({ error: "quotations.errors.staleVersion" });
-      await writeAudit({ actorId: user.id, action: "quotation.revise", entityType: "quotation", entityId: id, before: { revision: q.revision }, after: { revision: q.revision + 1, status: "DRAFT" } }, tx);
+      await writeAudit({ actorId: user.id, action: "quotation.revise", entityType: "quotation", entityId: id, before: { revision: q.revision }, after: { revision: q.revision + 1, status } }, tx);
     });
   } catch (e) {
     if (e instanceof Refusal) return e.state;
@@ -444,6 +469,11 @@ export async function cancelQuotationAction(id: string, version: number, reason:
         data: { status: "CANCELLED", cancelledAt: new Date(), cancelReason: text, version: { increment: 1 } },
       });
       if (updated.count !== 1) throw new Refusal({ error: "quotations.errors.staleVersion" });
+      if (q.status === "PENDING_APPROVAL") {
+        await withdrawPending(tx, id, user.id);
+        const approvers = await executives(tx);
+        await notify(tx, approvers.map((a) => a.id).filter((x) => x !== user.id), "APPROVAL_WITHDRAWN", id, { number: displayNumber(q.number, q.revision), customer: q.customerName, actor: user.name });
+      }
       await writeAudit({ actorId: user.id, action: "quotation.cancel", entityType: "quotation", entityId: id, before: { status: q.status }, after: { status: "CANCELLED", reason: text } }, tx);
     });
   } catch (e) {

@@ -46,6 +46,7 @@ export default async function NewQuotationPage({ searchParams }: PageProps<"/quo
         companies={companies}
         lockCompany={false}
         initialApproval={{}}
+        initialCovered={{}}
         cancelHref="/quotations"
         initial={{
           companyId: first.id,

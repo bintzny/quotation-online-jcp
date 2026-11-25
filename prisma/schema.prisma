@@ -44,6 +44,7 @@ model User {
   ownedCustomers   Customer[]               @relation("CustomerOwner")
   ownerCandidacies CustomerOwnerCandidate[]
   ownedQuotations  Quotation[]              @relation("QuotationOwner")
+  notifications    Notification[]
   sessions         Session[]
   accounts         Account[]
   twoFactors       TwoFactor[]
@@ -387,6 +388,7 @@ model Quotation {
   items     QuotationItem[]
   revisions QuotationRevision[]
   emails    QuotationEmail[]
+  approvals ApprovalRequest[]
 
   @@index([ownerId, status])
   @@index([companyId, createdAt])
@@ -440,6 +442,63 @@ model QuotationRevision {
 
   @@unique([quotationId, revision])
   @@map("quotation_revision")
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COUNTERED // the executive set other prices and approved them
+  WITHDRAWN // the salesperson took the request back (or cancelled the quotation)
+}
+
+/// A request to approve prices below the minimum (or free-typed lines). At most one is pending
+/// per quotation (partial unique index in the migration).
+model ApprovalRequest {
+  id            String         @id @default(cuid())
+  quotationId   String
+  quotation     Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revision      Int
+  requestedById String
+  reason        String
+  status        ApprovalStatus @default(PENDING)
+  lines         Json // flagged lines when requested (prices, minimums, reasons) — shown to executives only
+  totalSatang   BigInt // quotation total when requested
+  approvedLines Json? // prices the decision allows: later edits at or above these stay approved
+  counterLines  Json? // what the executive changed: [{ position, name, fromSatang, toSatang }]
+  decidedById   String?
+  decidedAt     DateTime?      @db.Timestamptz(3)
+  decisionNote  String?
+  remindedAt    DateTime?      @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@index([quotationId, createdAt])
+  @@index([status, createdAt])
+  @@map("approval_request")
+}
+
+enum NotificationType {
+  APPROVAL_REQUESTED
+  APPROVAL_APPROVED
+  APPROVAL_REJECTED
+  APPROVAL_COUNTERED
+  APPROVAL_WITHDRAWN
+  APPROVAL_REMINDER
+}
+
+/// The bell in the header.
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  quotationId String?
+  data        Json // { number, customer, actor } for the message
+  readAt      DateTime?        @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notification")
 }
 
 /// Emails sent from the system with the quotation PDF attached.

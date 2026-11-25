@@ -29,12 +29,36 @@ export function canViewQuotation(viewer: Viewer, q: Pick<QuotationRef, "ownerId"
   return isActingOwner(viewer, q) || canSeeAllQuotations(viewer);
 }
 
-/** Only drafts are edited in place; a sent quotation is changed through a new revision. */
+/**
+ * Edited in place: drafts, approved quotations (prices may go up freely; lower needs a new request)
+ * and rejected ones (to fix and ask again). A pending request must be withdrawn first; a sent
+ * quotation is changed through a new revision.
+ */
+const EDITABLE: readonly QuotationStatus[] = ["DRAFT", "APPROVED", "REJECTED"];
+
 export function canEditQuotation(viewer: Viewer, q: QuotationRef): boolean {
-  return isActingOwner(viewer, q) && q.status === "DRAFT";
+  return isActingOwner(viewer, q) && EDITABLE.includes(q.status);
 }
 
-/** "Sent to customer": a draft at normal prices, or an approved one (approval arrives in M4). */
+/** Status after saving an edit: approved stays approved only while the decision still covers the prices. */
+export function statusAfterEdit(requiresApproval: boolean, coveredByApproval: boolean): "DRAFT" | "APPROVED" {
+  return requiresApproval && coveredByApproval ? "APPROVED" : "DRAFT";
+}
+
+export function canSubmitForApproval(viewer: Viewer, q: QuotationRef): boolean {
+  return isActingOwner(viewer, q) && q.status === "DRAFT" && q.requiresApproval;
+}
+
+export function canWithdrawApproval(viewer: Viewer, q: QuotationRef): boolean {
+  return isActingOwner(viewer, q) && q.status === "PENDING_APPROVAL";
+}
+
+/** Executives decide. One who also sells may decide their own request (recorded as such). */
+export function canDecideApproval(viewer: Viewer, q: Pick<QuotationRef, "status">): boolean {
+  return canSeeAllQuotations(viewer) && q.status === "PENDING_APPROVAL";
+}
+
+/** "Sent to customer": a draft at normal prices, or an approved one. */
 export function canMarkSent(viewer: Viewer, q: QuotationRef): boolean {
   if (!isActingOwner(viewer, q)) return false;
   return (q.status === "DRAFT" && !q.requiresApproval) || q.status === "APPROVED";

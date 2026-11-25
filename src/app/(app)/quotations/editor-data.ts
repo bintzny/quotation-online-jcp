@@ -4,6 +4,8 @@ import { prisma } from "@/server/db";
 import { satangToInput } from "@/server/domain/money";
 import type { ApprovalReason } from "@/server/domain/pricing";
 import { companiesForUser, vatRateOf, type QuotationView } from "@/server/services/quotations";
+import { latestApprovedLines, linesFromItems } from "@/server/services/approvals";
+import { coveredLines } from "@/server/domain/approvals";
 import type { EditorCompany, EditorCustomer, EditorDiscount, EditorInitial, EditorLine } from "./quotation-editor";
 
 // Builds the plain props the client editor needs. Only fields a salesperson may see are passed on.
@@ -42,7 +44,7 @@ function discountOf(type: "NONE" | "PERCENT" | "AMOUNT", value: number): EditorD
 }
 
 /** Editor state for an existing draft. */
-export async function editorInitialFromQuotation(q: QuotationView): Promise<{ initial: EditorInitial; approval: Record<string, ApprovalReason> }> {
+export async function editorInitialFromQuotation(q: QuotationView): Promise<{ initial: EditorInitial; approval: Record<string, ApprovalReason>; covered: Record<string, boolean> }> {
   const items: EditorLine[] = q.items.map((it) => ({
     key: it.id,
     productId: it.productId ?? undefined,
@@ -57,6 +59,8 @@ export async function editorInitialFromQuotation(q: QuotationView): Promise<{ in
   }));
   const approval: Record<string, ApprovalReason> = {};
   for (const it of q.items) if (it.approvalReason) approval[it.id] = it.approvalReason as ApprovalReason;
+  const coveredList = coveredLines(await latestApprovedLines(q.id), linesFromItems(q.items));
+  const covered = Object.fromEntries(q.items.map((it, i) => [it.id, coveredList[i]]));
   return {
     initial: {
       companyId: q.companyId,
@@ -71,5 +75,6 @@ export async function editorInitialFromQuotation(q: QuotationView): Promise<{ in
       items,
     },
     approval,
+    covered,
   };
 }

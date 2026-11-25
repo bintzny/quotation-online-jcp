@@ -54,7 +54,9 @@
     "products": "Products",
     "pendingOwners": "Pending owners",
     "imports": "Import",
-    "quotations": "Quotations"
+    "quotations": "Quotations",
+    "approvals": "Approvals",
+    "approvalsCount": "Approvals ({count})"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -238,7 +240,8 @@
     "itemsRequired": "Please add at least one item",
     "tooManyItems": "A quotation can have at most 100 items",
     "emailList": "One of the email addresses is not valid (separate several addresses with commas)",
-    "tooManyRecipients": "Up to 5 email addresses"
+    "tooManyRecipients": "Up to 5 email addresses",
+    "rejectReasonRequired": "Please give the reason for not approving"
   },
   "customers": {
     "title": "Customers",
@@ -536,7 +539,9 @@
     "sectionEmails": "Emails sent from the system",
     "emailTo": "To {to}",
     "emailCc": "Cc {cc}",
-    "revisionsCancelledNote": "This quotation is cancelled. The files below are the copies sent to the customer, kept as a record."
+    "revisionsCancelledNote": "This quotation is cancelled. The files below are the copies sent to the customer, kept as a record.",
+    "lineApproved": "Within the price an executive approved",
+    "withinApprovalBanner": "Every price is still within what an executive approved. After saving, the quotation stays approved."
   },
   "files": {
     "none": "No image",
@@ -556,5 +561,92 @@
       "notImage": "Only PNG or JPG images are accepted",
       "tooManyPixels": "The image is too large (at most 4,000 pixels per side)"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "markAllRead": "Mark all as read",
+    "bellUnread": "Notifications ({count} unread)",
+    "types": {
+      "APPROVAL_REQUESTED": "{actor} asks to approve {number} ({customer})",
+      "APPROVAL_APPROVED": "{actor} approved {number} ({customer})",
+      "APPROVAL_REJECTED": "{actor} did not approve {number} ({customer})",
+      "APPROVAL_COUNTERED": "{actor} set new prices and approved {number} ({customer})",
+      "APPROVAL_WITHDRAWN": "{actor} withdrew the approval request for {number} ({customer})",
+      "APPROVAL_REMINDER": "The approval request for {number} ({customer}) has waited more than 4 business hours"
+    }
+  },
+  "approvals": {
+    "title": "Approvals",
+    "decideTitle": "Review approval request",
+    "pendingTitle": "Waiting ({count})",
+    "noPending": "No requests waiting",
+    "decidedTitle": "Recently decided",
+    "waitedHours": "waiting {hours} business hours",
+    "waitedMinutes": "waiting {minutes} min",
+    "status": {
+      "PENDING": "Waiting",
+      "APPROVED": "Approved",
+      "REJECTED": "Not approved",
+      "COUNTERED": "New price approved",
+      "WITHDRAWN": "Withdrawn"
+    },
+    "historyTitle": "Approval history",
+    "requestedBy": "Requested by {name}",
+    "decidedBy": "Decided by {name} on {date}",
+    "selfDecided": "decided by the requester",
+    "note": "Note",
+    "counterLine": "{name}: from {from} to {to} per unit",
+    "reasonLabel": "Reason",
+    "reasonPlaceholder": "e.g. a competitor offered less, or a regular customer",
+    "flaggedTitle": "Lines needing approval ({count})",
+    "customLine": "Free-typed item",
+    "netUnit": "Net unit price",
+    "minPrice": "Minimum price",
+    "listPrice": "List price",
+    "priceTyped": "Typed price {price}",
+    "lineDiscount": "line discount {amount}",
+    "otherLines": "{count} other line(s) at normal prices",
+    "decisionTitle": "Decision",
+    "selfRequestNotice": "This is your own request. It will be recorded as decided by the requester.",
+    "approve": "Approve",
+    "counter": "New price",
+    "reject": "Reject",
+    "counterHint": "Enter each line's unit price before discounts. The existing line and bill discounts still apply. The quotation is changed to these prices and approved.",
+    "rejectReasonLabel": "Reason for not approving",
+    "noteLabel": "Note to the salesperson (optional)",
+    "confirmApprove": "Approve",
+    "confirmReject": "Reject",
+    "confirmCounter": "Approve with new prices",
+    "request": "Request approval",
+    "requestHint": "Executives are notified by email and in the app. The quotation cannot be edited while waiting.",
+    "requestButton": "Send request",
+    "withdraw": "Withdraw request",
+    "withdrawConfirm": "The quotation goes back to draft for editing and needs a new request before it can be sent.",
+    "decide": "Review request",
+    "submitted": "Approval requested",
+    "withdrawn": "Request withdrawn",
+    "decided": {
+      "approve": "Approved",
+      "reject": "Marked as not approved",
+      "counter": "New prices approved"
+    },
+    "pendingBanner": "Waiting for an executive's decision. It cannot be edited or sent meanwhile.",
+    "rejectedBanner": "Not approved: {note} Change the prices and request again.",
+    "approvedBanner": "Prices approved: you can send it. Lowering a price again needs a new request.",
+    "counteredBanner": "An executive set new prices and approved them. The quotation was updated; please check it before sending.",
+    "errors": {
+      "cannotSubmit": "This quotation does not need approval, or its status does not allow a request.",
+      "alreadyPending": "This quotation already has a request waiting.",
+      "notPending": "This request was already decided or withdrawn. Please reload the page.",
+      "noCounterChange": "Change at least one price, or choose \"Approve\".",
+      "counterInvalid": "The new price makes a discount larger than the amount. Please check the prices."
+    },
+    "priceBeforeDiscount": "price per {unit} before discounts",
+    "counterNetPreview": "Net price after discounts will be {net} per unit (minimum {min})",
+    "stillBelowMin": "still below the minimum, which you may approve",
+    "counterTotalPreview": "Grand total with the new prices: {total}",
+    "totalWhenRequested": "Total when requested",
+    "asRequestedNote": "Lines and total as they were when approval was requested; the quotation may have changed since."
   }
 }

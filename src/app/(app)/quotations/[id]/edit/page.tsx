@@ -29,7 +29,7 @@ export default async function EditQuotationPage({ params, searchParams }: PagePr
   if (!companies.some((c) => c.id === q.companyId)) {
     companies = [{ id: q.companyId, label: `${q.company.code} · ${q.company.nameTh}`, vatRateBp: q.vatRateBp, defaultValidityDays: q.validityDays, terms: "", termsEn: "" }];
   }
-  const { initial, approval } = await editorInitialFromQuotation(q);
+  const { initial, approval, covered } = await editorInitialFromQuotation(q);
   const skipped = typeof sp.skipped === "string" ? Number(sp.skipped) : 0;
 
   return (
@@ -47,6 +47,7 @@ export default async function EditQuotationPage({ params, searchParams }: PagePr
         lockCompany
         initial={initial}
         initialApproval={approval}
+        initialCovered={covered}
         cancelHref={`/quotations/${id}`}
       />
     </div>

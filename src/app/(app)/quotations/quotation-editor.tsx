@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { AlertTriangleIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckCircle2Icon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import {
   previewPricingAction, saveQuotationAction, searchCustomersForQuoteAction, searchProductsForQuoteAction,
   type QuotationFormState,
@@ -117,6 +117,7 @@ export function QuotationEditor({
   lockCompany,
   initial,
   initialApproval,
+  initialCovered,
   cancelHref,
 }: {
   quotationId: string | null;
@@ -125,6 +126,7 @@ export function QuotationEditor({
   lockCompany: boolean;
   initial: EditorInitial;
   initialApproval: Record<string, ApprovalReason>;
+  initialCovered: Record<string, boolean>; // lines still within an earlier approval of this quotation
   cancelHref: string;
 }) {
   const t = useTranslations("quotations");
@@ -145,6 +147,7 @@ export function QuotationEditor({
   const [billDiscount, setBillDiscount] = useState<EditorDiscount>(initial.billDiscount);
   const [items, setItems] = useState<EditorLine[]>(initial.items);
   const [approval, setApproval] = useState<Record<string, ApprovalReason | null>>(initialApproval);
+  const [covered, setCovered] = useState<Record<string, boolean>>(initialCovered);
   const [dirty, setDirty] = useState(false);
 
   const company = companies.find((c) => c.id === companyId) ?? companies[0];
@@ -171,6 +174,7 @@ export function QuotationEditor({
         const res = await previewPricingAction(payloadJson, quotationId);
         if (seq !== previewSeq.current || !res.ok) return;
         setApproval(Object.fromEntries(keys.map((k, i) => [k, res.approval[i]])));
+        setCovered(Object.fromEntries(keys.map((k, i) => [k, res.covered[i]])));
       } catch {
         // offline or session ended: the save will tell
       }
@@ -229,7 +233,8 @@ export function QuotationEditor({
     if (!errs) return null;
     return Object.entries(errs).map(([f, k]) => `${t(`lineFields.${f}`)}: ${tv.has(k) ? tv(k) : tv("invalid")}`).join(" · ");
   };
-  const anyApproval = items.some((l) => approval[l.key]);
+  const anyApproval = items.some((l) => approval[l.key] && !covered[l.key]);
+  const allApproved = !anyApproval && items.some((l) => approval[l.key]);
 
   return (
     <div className="grid gap-6">
@@ -300,7 +305,8 @@ export function QuotationEditor({
         {fieldError("items") && <p className="text-sm text-destructive" role="alert">{fieldError("items")}</p>}
         <ol className="grid gap-3">
           {items.map((l, i) => {
-            const reason = approval[l.key];
+            const reason = approval[l.key] && !covered[l.key] ? approval[l.key] : null;
+            const approvedLine = !!approval[l.key] && !!covered[l.key];
             const err = lineError(i);
             return (
               <li key={l.key} className={cn("grid gap-3 rounded-lg border p-3", reason && "border-amber-400 bg-amber-50/60 dark:bg-amber-950/20", err && "border-destructive")}>
@@ -352,6 +358,12 @@ export function QuotationEditor({
                     </span>
                   </div>
                 </div>
+                {approvedLine && (
+                  <p className="flex items-center gap-1.5 text-sm text-green-700 dark:text-green-400 lg:pl-8">
+                    <CheckCircle2Icon className="size-4 shrink-0" />
+                    {t("lineApproved")}
+                  </p>
+                )}
                 {reason && (
                   <p className="flex items-center gap-1.5 text-sm text-amber-800 dark:text-amber-300 lg:pl-8">
                     <AlertTriangleIcon className="size-4 shrink-0" />
@@ -387,6 +399,12 @@ export function QuotationEditor({
         </div>
       </FormSection>
 
+      {allApproved && (
+        <p className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200" role="status">
+          <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
+          {t("withinApprovalBanner")}
+        </p>
+      )}
       {anyApproval && (
         <p className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200" role="status">
           <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
