@@ -168,9 +168,24 @@ export const quotationPayloadSchema = z.object({
   note: optionalText(2000),
   terms: optionalText(4000),
   billDiscount: discountInput,
+  pdfLanguage: z.enum(["TH", "EN"]).default("TH"),
   items: z.array(quotationLineSchema).min(1, "itemsRequired").max(100, "tooManyItems"),
   version: z.coerce.number().int().optional(), // edits: the version the editor loaded
 });
 
 export type QuotationPayload = z.infer<typeof quotationPayloadSchema>;
 export type QuotationLinePayload = z.infer<typeof quotationLineSchema>;
+
+/** "a@x.com, b@y.com; c@z.com" → unique, lower-cased addresses. */
+const emailList = (max: number, required: boolean) =>
+  z.preprocess(
+    (v) => (typeof v === "string" ? [...new Set(v.split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean))] : v),
+    z.array(z.string().email("emailList").max(200, "tooLong")).min(required ? 1 : 0, "required").max(max, "tooManyRecipients"),
+  );
+
+export const quotationEmailSchema = z.object({
+  to: emailList(5, true),
+  cc: emailList(5, false),
+  ccMe: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+  message: optionalText(2000),
+});

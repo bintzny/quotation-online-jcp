@@ -15,6 +15,7 @@ export async function editorCompanies(userId: string): Promise<EditorCompany[]> 
     vatRateBp: vatRateOf(c),
     defaultValidityDays: c.defaultValidityDays,
     terms: c.quoteTermsTh ?? "",
+    termsEn: c.quoteTermsEn ?? "",
   }));
 }
 
@@ -66,6 +67,7 @@ export async function editorInitialFromQuotation(q: QuotationView): Promise<{ in
       note: q.note ?? "",
       terms: q.terms ?? "",
       billDiscount: discountOf(q.billDiscountType, q.billDiscountValue),
+      pdfLanguage: q.pdfLanguage,
       items,
     },
     approval,

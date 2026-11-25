@@ -48,3 +48,6 @@ next-env.d.ts
 # local seed credentials
 .dev-credentials.txt
 
+
+# private uploaded files and generated PDFs (development storage)
+/storage

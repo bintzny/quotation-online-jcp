@@ -236,7 +236,9 @@
     "discountTooLarge": "The discount cannot exceed the amount",
     "amountTooLarge": "The amount is larger than the system supports",
     "itemsRequired": "Please add at least one item",
-    "tooManyItems": "A quotation can have at most 100 items"
+    "tooManyItems": "A quotation can have at most 100 items",
+    "emailList": "One of the email addresses is not valid (separate several addresses with commas)",
+    "tooManyRecipients": "Up to 5 email addresses"
   },
   "customers": {
     "title": "Customers",
@@ -484,7 +486,7 @@
     "copied": "Copied as a new draft with a new number and current product prices. Please check the prices before sending.",
     "copiedSkipped": "Copied as a new draft with a new number. {count} discontinued item(s) were left out. Please check the prices before sending.",
     "markSent": "Mark as sent",
-    "markSentConfirm": "Confirm that this quotation has been sent to the customer. Later changes will be issued as a revision (R1, R2, …) under the same number.",
+    "markSentConfirm": "Confirm that this quotation has been sent to the customer. A PDF dated today is kept as a record; if you sent it before today, please download the new file and send it so the dates match. Later changes will be issued as a revision (R1, R2, …) under the same number.",
     "markedSent": "Marked as sent",
     "revise": "Revise",
     "reviseConfirm": "The quotation will reopen as its next revision for editing, keeping the same number with an R suffix.",
@@ -507,8 +509,52 @@
       "nothingToCopy": "Nothing to copy (all products are no longer sold).",
       "copyFailed": "The quotation could not be copied because some data no longer matches, e.g. a discount larger than the current product price.",
       "customerLocked": "A saved quotation cannot change its customer. Please copy it instead.",
-      "companyInactive": "This quotation's company has been deactivated. Please contact the system administrator."
+      "companyInactive": "This quotation's company has been deactivated. Please contact the system administrator.",
+      "noSender": "This company has no sender email set up yet. Please contact the system administrator, or download the PDF to send it yourself and then mark it as sent.",
+      "emailRateLimit": "You have sent 30 quotation emails in the last hour. Please try again later.",
+      "emailFailed": "The email could not be sent. The quotation has not changed. Please try again.",
+      "emailSentNotSaved": "The email reached the customer, but its status could not be saved. Please do not send it again and tell the system administrator.",
+      "pdfBusy": "The PDF service is busy. Please try again in a moment."
     },
-    "customerLockedHint": "A saved quotation keeps its customer. To quote for another customer, copy it."
+    "customerLockedHint": "A saved quotation keeps its customer. To quote for another customer, copy it.",
+    "pdf": "PDF",
+    "pdfDraft": "PDF (draft)",
+    "pdfLanguage": "Quotation language (PDF)",
+    "pdfLanguageHint": "Used for the PDF and the email sent to the customer",
+    "languageTh": "Thai",
+    "languageEn": "English",
+    "sendEmail": "Send email",
+    "sendEmailHint": "The PDF is attached and sent in the company's name; replies go to your email. The quotation is then marked as sent.",
+    "emailToLabel": "To",
+    "emailCcLabel": "Cc (optional)",
+    "emailListHint": "Separate several addresses with commas (,), up to 5",
+    "emailCcMe": "Send me a copy",
+    "emailMessage": "Message to the customer (optional)",
+    "sending": "Sending...",
+    "sendEmailButton": "Send email",
+    "emailSent": "Email sent and the quotation is marked as sent",
+    "sectionEmails": "Emails sent from the system",
+    "emailTo": "To {to}",
+    "emailCc": "Cc {cc}",
+    "revisionsCancelledNote": "This quotation is cancelled. The files below are the copies sent to the customer, kept as a record."
+  },
+  "files": {
+    "none": "No image",
+    "upload": "Upload",
+    "replace": "Replace",
+    "remove": "Remove",
+    "removed": "Image removed",
+    "uploaded": "Image uploaded",
+    "companyLogo": "Company logo (printed on quotations)",
+    "logoHint": "PNG or JPG up to 1 MB. A transparent or white background works best.",
+    "signatureTitle": "Signature on quotations",
+    "signature": "Your signature",
+    "signatureHint": "PNG or JPG up to 1 MB. It is printed in the \"Offered by\" box of quotations you manage.",
+    "errors": {
+      "required": "Please choose a file",
+      "tooLarge": "The file is larger than 1 MB",
+      "notImage": "Only PNG or JPG images are accepted",
+      "tooManyPixels": "The image is too large (at most 4,000 pixels per side)"
+    }
   }
 }

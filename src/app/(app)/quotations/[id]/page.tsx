@@ -7,7 +7,7 @@ import { formatQuantity } from "@/server/domain/pricing";
 import { bahtText } from "@/server/domain/baht-text";
 import { displayNumber } from "@/server/domain/numbering";
 import { basisPointsToPercent } from "@/server/domain/money";
-import { canCancel, canCopy, canEditQuotation, canMarkSent, canRevise } from "@/server/domain/quotations";
+import { canCancel, canCopy, canEditQuotation, canMarkSent, canRevise, pdfWatermark } from "@/server/domain/quotations";
 import { getQuotationForViewer } from "@/server/services/quotations";
 import { PageHeader } from "@/components/page-header";
 import { FlashToast } from "@/components/flash-toast";
@@ -42,6 +42,8 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
     copy: canCopy(viewer, q),
     cancel: canCancel(viewer, q),
   };
+  const watermark = pdfWatermark(q);
+  const emailDefaults = { to: q.contactEmail ?? "", senderConfigured: !!q.company.senderEmail };
   const discountLabel = (type: string, value: number, amount: number) =>
     type === "PERCENT" ? `${basisPointsToPercent(value)}% (${formatSatang(amount)})` : type === "AMOUNT" ? formatSatang(amount) : "";
   const branch = q.customerTaxId
@@ -55,7 +57,7 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
         title={<span className="font-mono">{number}</span>}
         backHref="/quotations"
         backLabel={t("quotations.title")}
-        actions={<QuotationActions id={q.id} version={q.version} allowed={allowed} />}
+        actions={<QuotationActions id={q.id} version={q.version} allowed={allowed} watermark={watermark} email={emailDefaults} />}
       />
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -164,11 +166,33 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
 
       {q.revisions.length > 0 && (
         <FormSection title={t("quotations.sectionRevisions")}>
+          {q.status === "CANCELLED" && <p className="text-sm text-muted-foreground">{t("quotations.revisionsCancelledNote")}</p>}
           <ul className="grid gap-1 text-sm">
             {q.revisions.map((r) => (
-              <li key={r.revision}>
-                <span className="font-mono">{displayNumber(q.number, r.revision)}</span>
-                <span className="text-muted-foreground"> · {t("quotations.sentOn", { date: format.dateTime(r.sentAt, { dateStyle: "medium", timeStyle: "short" }) })}</span>
+              <li key={r.revision} className="flex flex-wrap items-center gap-x-2">
+                {r.pdfKey ? (
+                  <a href={`/quotations/${q.id}/revisions/${r.revision}/pdf`} target="_blank" rel="noopener" className="font-mono underline-offset-2 hover:underline">
+                    {displayNumber(q.number, r.revision)} (PDF)
+                  </a>
+                ) : (
+                  <span className="font-mono">{displayNumber(q.number, r.revision)}</span>
+                )}
+                <span className="text-muted-foreground">· {t("quotations.sentOn", { date: format.dateTime(r.sentAt, { dateStyle: "medium", timeStyle: "short" }) })}</span>
+              </li>
+            ))}
+          </ul>
+        </FormSection>
+      )}
+
+      {q.emails.length > 0 && (
+        <FormSection title={t("quotations.sectionEmails")}>
+          <ul className="grid gap-2 text-sm">
+            {q.emails.map((m) => (
+              <li key={m.id} className="grid gap-0.5 border-b pb-2 last:border-0">
+                <span>{t("quotations.emailTo", { to: m.to.join(", ") })}{m.cc.length > 0 ? ` · ${t("quotations.emailCc", { cc: m.cc.join(", ") })}` : ""}</span>
+                <span className="text-xs text-muted-foreground">
+                  <span className="font-mono">{displayNumber(q.number, m.revision)}</span> · {format.dateTime(m.sentAt, { dateStyle: "medium", timeStyle: "short" })}
+                </span>
               </li>
             ))}
           </ul>

@@ -56,6 +56,7 @@ export default async function NewQuotationPage({ searchParams }: PageProps<"/quo
           note: "",
           terms: first.terms,
           billDiscount: { type: "NONE", value: "" },
+          pdfLanguage: "TH",
           items: [],
         }}
       />

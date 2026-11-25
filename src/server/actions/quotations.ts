@@ -16,8 +16,14 @@ import {
   companiesForUser, resolveQuotation, searchProducts, searchQuotableCustomers,
   type LineErrors, type Resolved,
 } from "@/server/services/quotations";
-import { quotationPayloadSchema } from "@/lib/schemas";
+import { quotationEmailSchema, quotationPayloadSchema } from "@/lib/schemas";
 import { satangToInput } from "@/server/domain/money";
+import { pdfFileName } from "@/server/domain/files";
+import { buildQuotationDocument, datesIfIssuedNow, documentForSnapshot, renderQuotationPdf } from "@/server/services/quotation-document";
+import { PdfBusyError } from "@/server/pdf/render";
+import { quotationEmail } from "@/server/pdf/quotation-email";
+import { formatFrom, sendMail } from "@/server/mail";
+import { deleteObject, newKey, putObject } from "@/server/storage";
 import { zodFieldErrors } from "./form-state";
 
 type Tx = Prisma.TransactionClient;
@@ -90,13 +96,14 @@ async function nextNumber(tx: Tx, companyId: string, companyCode: string, now: D
   return formatQuotationNumber(companyCode, ym, Number(rows[0].lastNumber));
 }
 
-function headerData(r: Resolved, d: { validityDays: number; creditDays: number; note?: string; terms?: string }, now: Date) {
+function headerData(r: Resolved, d: { validityDays: number; creditDays: number; note?: string; terms?: string; pdfLanguage: "TH" | "EN" }, now: Date) {
   const issueDate = bangkokDate(now);
   const p = r.pricing;
   return {
     customerId: r.customer.id,
     billDiscountType: r.billDiscount.type,
     billDiscountValue: BigInt(r.billDiscount.value),
+    pdfLanguage: d.pdfLanguage,
     issueDate,
     validityDays: d.validityDays,
     validUntil: addDays(issueDate, d.validityDays),
@@ -129,6 +136,7 @@ function itemsData(r: Resolved) {
       position: i,
       productId: l.productId,
       productCode: l.productCode,
+      nameEn: l.nameEn,
       name: l.name,
       unit: l.unit,
       isService: l.isService,
@@ -289,32 +297,117 @@ function discountText(type: "NONE" | "PERCENT" | "AMOUNT", value: bigint): strin
   return type === "PERCENT" ? String(Number(value) / 100) : satangToInput(Number(value));
 }
 
-export async function markSentAction(id: string, version: number): Promise<QuotationFormState> {
+type EmailRequest = { to: string[]; cc: string[]; message: string | null };
+
+/**
+ * Give the quotation to the customer: print the final PDF (dated today), keep it with the
+ * revision, optionally email it, and mark the quotation sent — all or nothing. The email is sent
+ * inside the transaction, so a failed send leaves the quotation unchanged.
+ */
+async function issueToCustomer(id: string, version: number, email: EmailRequest | null): Promise<QuotationFormState> {
   const { user, q } = await loadForAction(id);
   if (!q) return { error: "common.notFound" };
   if (!canMarkSent(viewerOf(user), q)) return { error: "quotations.errors.cannotSend" };
+  if (q.version !== version) return { error: "quotations.errors.staleVersion" };
+
+  let sender: { from: string; companyName: string } | null = null;
+  if (email) {
+    const company = await prisma.company.findUniqueOrThrow({ where: { id: q.companyId }, select: { nameTh: true, nameEn: true, senderEmail: true, senderName: true } });
+    if (!company.senderEmail) return { error: "quotations.errors.noSender" };
+    const companyName = q.pdfLanguage === "EN" ? company.nameEn || company.nameTh : company.nameTh;
+    sender = { from: formatFrom(company.senderName || companyName, company.senderEmail), companyName };
+    // a simple brake on mistakes and abuse: 30 quotation emails per person per hour
+    const lastHour = await prisma.quotationEmail.count({ where: { sentById: user.id, sentAt: { gte: new Date(Date.now() - 3_600_000) } } });
+    if (lastHour >= 30) return { error: "quotations.errors.emailRateLimit" };
+  }
+
   const now = new Date();
-  const issueDate = bangkokDate(now);
+  // the printed date is the day it goes to the customer (the PDF link prints the same dates)
+  const { issueDate, validUntil } = datesIfIssuedNow(q.validityDays, now);
+  const doc = await buildQuotationDocument(id, { watermark: null, issueDate, validUntil });
+  if (!doc) return { error: "common.notFound" };
+  let pdf: Buffer;
+  try {
+    pdf = await renderQuotationPdf(doc);
+  } catch (e) {
+    if (e instanceof PdfBusyError) return { error: "quotations.errors.pdfBusy" };
+    throw e;
+  }
+  const pdfKey = newKey("quotations", id, "pdf");
+  await putObject(pdfKey, pdf);
+
+  // Once the email has left, the PDF is evidence: never delete it, even if saving fails afterwards.
+  let mailed: { providerId: string | null } | null = null;
   try {
     await prisma.$transaction(async (tx) => {
       const updated = await tx.quotation.updateMany({
         where: { id, version, status: q.status, ownerId: user.id },
-        // the printed date is the day it goes to the customer
-        data: { status: "SENT", sentAt: now, issueDate, validUntil: addDays(issueDate, q.validityDays), version: { increment: 1 } },
+        data: { status: "SENT", sentAt: now, issueDate, validUntil, version: { increment: 1 } },
       });
       if (updated.count !== 1) throw new Refusal({ error: "quotations.errors.staleVersion" });
       const fresh = await tx.quotation.findUniqueOrThrow({ where: { id }, include: { items: { orderBy: { position: "asc" } } } });
       await tx.quotationRevision.create({
-        data: { quotationId: id, revision: q.revision, snapshot: snapshotOf(fresh), sentAt: now, sentById: user.id },
+        data: {
+          quotationId: id, revision: q.revision, pdfKey, sentAt: now, sentById: user.id,
+          snapshot: { quotation: snapshotOf(fresh), document: documentForSnapshot(doc) },
+        },
       });
-      await writeAudit({ actorId: user.id, action: "quotation.sent", entityType: "quotation", entityId: id, before: { status: q.status }, after: { status: "SENT", revision: q.revision } }, tx);
-    });
+      await writeAudit({
+        actorId: user.id, action: email ? "quotation.emailed" : "quotation.sent", entityType: "quotation", entityId: id,
+        before: { status: q.status }, after: { status: "SENT", revision: q.revision, ...(email ? { to: email.to, cc: email.cc } : {}) },
+      }, tx);
+      if (!email || !sender) return;
+
+      // Everything else is written first; sending is the last step before commit, so a failed
+      // send rolls it all back and a successful one leaves almost nothing that can still fail.
+      const owner = await tx.user.findUniqueOrThrow({ where: { id: user.id }, select: { name: true, email: true, phone: true } });
+      const content = quotationEmail({
+        lang: doc.lang, companyName: sender.companyName, number: doc.number, customerName: doc.customer.name,
+        totalSatang: doc.totalSatang, vatRateBp: doc.vatRateBp, validUntil: doc.validUntil, sellerName: owner.name,
+        sellerPhone: owner.phone, sellerEmail: owner.email, message: email.message,
+      });
+      const record = await tx.quotationEmail.create({
+        data: { quotationId: id, revision: q.revision, to: email.to, cc: email.cc, subject: content.subject, fromAddress: sender.from, sentById: user.id },
+      });
+      try {
+        const result = await sendMail({
+          from: sender.from, to: email.to, cc: email.cc, replyTo: owner.email,
+          subject: content.subject, text: content.text, html: content.html,
+          attachments: [{ filename: pdfFileName(doc.number), content: pdf }],
+          // the same quotation version is never emailed twice, even if the user retries
+          idempotencyKey: `quotation-${id}-v${version}`,
+        });
+        mailed = { providerId: result.id };
+      } catch (err) {
+        console.error("[mail] quotation email failed", err);
+        throw new Refusal({ error: "quotations.errors.emailFailed" });
+      }
+      if (mailed.providerId) await tx.quotationEmail.update({ where: { id: record.id }, data: { providerMessageId: mailed.providerId } });
+    }, { timeout: 45_000 });
   } catch (e) {
+    if (mailed) {
+      console.error("[mail] quotation emailed but not saved", { quotationId: id, version, pdfKey, provider: (mailed as { providerId: string | null }).providerId, error: e });
+      return { error: "quotations.errors.emailSentNotSaved" };
+    }
+    await deleteObject(pdfKey);
     if (e instanceof Refusal) return e.state;
     throw e;
   }
   revalidate(id);
   return undefined;
+}
+
+/** Downloaded and sent by the salesperson themselves (LINE, own email…). */
+export async function markSentAction(id: string, version: number): Promise<QuotationFormState> {
+  return issueToCustomer(id, version, null);
+}
+
+export async function sendQuotationEmailAction(id: string, version: number, formData: FormData): Promise<QuotationFormState> {
+  const user = await requireUser();
+  const parsed = quotationEmailSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: zodFieldErrors(parsed.error) };
+  const cc = parsed.data.ccMe ? [...new Set([...parsed.data.cc, user.email.toLowerCase()])] : parsed.data.cc;
+  return issueToCustomer(id, version, { to: parsed.data.to, cc: cc.filter((x) => !parsed.data.to.includes(x)), message: parsed.data.message ?? null });
 }
 
 /** A sent quotation goes back to draft as the next revision (-R1, -R2…), same number. */
@@ -406,6 +499,7 @@ export async function copyQuotationAction(id: string): Promise<QuotationFormStat
     creditDays: src.creditDays,
     note: src.note ?? undefined,
     terms: src.terms ?? undefined,
+    pdfLanguage: src.pdfLanguage,
     billDiscount: {
       type: src.billDiscountType,
       value: discountText(src.billDiscountType, src.billDiscountValue),

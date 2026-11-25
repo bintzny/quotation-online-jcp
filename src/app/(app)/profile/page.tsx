@@ -2,6 +2,9 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/server/session";
 import { requires2FA } from "@/server/domain/roles";
+import { prisma } from "@/server/db";
+import { removeSignatureAction, uploadSignatureAction } from "@/server/actions/files";
+import { ImageUpload } from "@/components/image-upload";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -11,6 +14,7 @@ export default async function ProfilePage() {
   const user = await requireUser();
   const t = await getTranslations();
   const mandatory = requires2FA(user.roles.join(","));
+  const signatureKey = (await prisma.user.findUnique({ where: { id: user.id }, select: { signatureKey: true } }))?.signatureKey ?? null;
 
   return (
     <div className="grid max-w-2xl gap-6">
@@ -24,6 +28,22 @@ export default async function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+      {user.roles.includes("sales") && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{t("files.signatureTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ImageUpload
+              label={t("files.signature")}
+              hint={t("files.signatureHint")}
+              previewUrl={signatureKey ? `/api/files/signature/${user.id}?k=${signatureKey.slice(-12, -4)}` : null}
+              upload={uploadSignatureAction}
+              remove={removeSignatureAction}
+            />
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t("profile.security")}</CardTitle>

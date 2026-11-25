@@ -12,7 +12,14 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "10mb" },
   },
   output: "standalone",
-  serverExternalPackages: ["pg"],
+  serverExternalPackages: ["pg", "puppeteer-core"],
+  // Never ship private files in the server bundle; do ship the font the PDFs embed.
+  outputFileTracingExcludes: {
+    "/*": ["./storage/**/*", "./.env*", "./.dev-credentials.txt", "./tests/**/*"],
+  },
+  outputFileTracingIncludes: {
+    "/*": ["./node_modules/@fontsource/sarabun/files/sarabun-{thai,latin}-{400,700}-normal.woff2"],
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -50,6 +50,17 @@ export function canCancel(viewer: Viewer, q: QuotationRef): boolean {
   return isActingOwner(viewer, q) && CANCELLABLE.includes(q.status);
 }
 
+/**
+ * Watermark on a downloaded PDF. A quotation that still needs approval may only leave the system
+ * marked "draft"; a cancelled one is marked "cancelled". Normal-price drafts print clean so the
+ * salesperson can send them (then mark them sent).
+ */
+export function pdfWatermark(q: Pick<QuotationRef, "status" | "requiresApproval">): "draft" | "cancelled" | null {
+  if (q.status === "CANCELLED") return "cancelled";
+  if (q.requiresApproval && (q.status === "DRAFT" || q.status === "PENDING_APPROVAL" || q.status === "REJECTED")) return "draft";
+  return null;
+}
+
 /** Copying makes a new draft owned by the viewer (the customer is checked again when copying). */
 export function canCopy(viewer: Viewer, q: Pick<QuotationRef, "ownerId">): boolean {
   return canCreateQuotation(viewer) && canViewQuotation(viewer, q);

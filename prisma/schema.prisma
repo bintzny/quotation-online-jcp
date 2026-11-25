@@ -37,6 +37,7 @@ model User {
   mustChangePassword Boolean   @default(true)
   failedLoginCount   Int       @default(0)
   lockedUntil        DateTime? @db.Timestamptz(3)
+  signatureKey       String? // storage key of the signature image printed on quotations
 
   company          Company?                 @relation(fields: [companyId], references: [id])
   extraCompanies   UserCompany[]
@@ -375,15 +376,17 @@ model Quotation {
   note         String?
   terms        String?
   cancelReason String?
-  sentAt       DateTime? @db.Timestamptz(3)
-  cancelledAt  DateTime? @db.Timestamptz(3)
+  sentAt       DateTime?   @db.Timestamptz(3)
+  cancelledAt  DateTime?   @db.Timestamptz(3)
   copiedFromId String?
-  version      Int       @default(1) // optimistic lock for edits from two tabs
-  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  pdfLanguage  DocLanguage @default(TH) // language of the PDF given to the customer
+  version      Int         @default(1) // optimistic lock for edits from two tabs
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
 
   items     QuotationItem[]
   revisions QuotationRevision[]
+  emails    QuotationEmail[]
 
   @@index([ownerId, status])
   @@index([companyId, createdAt])
@@ -401,6 +404,7 @@ model QuotationItem {
   product         Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
   productCode     String?
   name            String
+  nameEn          String? // product's English name when saved (English PDF)
   unit            String
   isService       Boolean      @default(false)
   quantityMilli   Int // 1.5 units = 1500
@@ -418,19 +422,43 @@ model QuotationItem {
   @@map("quotation_item")
 }
 
-/// What was given to the customer for each revision (PDF added in M3).
+enum DocLanguage {
+  TH
+  EN
+}
+
+/// What was given to the customer for each revision: the data and the exact PDF.
 model QuotationRevision {
   id          String    @id @default(cuid())
   quotationId String
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   revision    Int
-  snapshot    Json
-  pdfKey      String?
+  snapshot    Json // quotation + the document data (company, seller) as printed; no minimum prices
+  pdfKey      String? // storage key of the PDF that was sent
   sentAt      DateTime  @db.Timestamptz(3)
   sentById    String
 
   @@unique([quotationId, revision])
   @@map("quotation_revision")
+}
+
+/// Emails sent from the system with the quotation PDF attached.
+model QuotationEmail {
+  id                String    @id @default(cuid())
+  quotationId       String
+  quotation         Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revision          Int
+  to                String[]
+  cc                String[]
+  subject           String
+  fromAddress       String
+  providerMessageId String? // id from the email service (null for the development outbox)
+  sentById          String
+  sentAt            DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([quotationId])
+  @@index([sentById, sentAt])
+  @@map("quotation_email")
 }
 
 // ───────────────────────────── Imports ─────────────────────────────

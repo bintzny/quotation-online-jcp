@@ -14,7 +14,7 @@ export const QUOTATION_PAGE_SIZE = 50;
 // ── Companies, customers and products the editor may use ──
 
 const COMPANY_FIELDS = {
-  id: true, code: true, nameTh: true, vatRegistered: true, vatRateBp: true, defaultValidityDays: true, quoteTermsTh: true,
+  id: true, code: true, nameTh: true, vatRegistered: true, vatRateBp: true, defaultValidityDays: true, quoteTermsTh: true, quoteTermsEn: true,
 } as const;
 
 /** Active companies the user may issue quotations for: their main company plus extra grants. */
@@ -91,6 +91,7 @@ export type LineErrors = Record<number, Record<string, string>>;
 export type ResolvedLine = {
   productId: string | null;
   productCode: string | null;
+  nameEn: string | null;
   name: string;
   unit: string;
   isService: boolean;
@@ -174,7 +175,7 @@ export async function resolveQuotation(
   const products = new Map(
     (await prisma.product.findMany({
       where: { id: { in: productIds } },
-      select: { id: true, code: true, name: true, unit: true, listPriceSatang: true, minPriceSatang: true, isService: true, active: true },
+      select: { id: true, code: true, name: true, nameEn: true, unit: true, listPriceSatang: true, minPriceSatang: true, isService: true, active: true },
     })).map((p) => [p.id, p]),
   );
 
@@ -189,16 +190,16 @@ export async function resolveQuotation(
     const discount = parseDiscount(item.discount);
     if (!discount) errs.discount = item.discount.type === "PERCENT" ? "percent" : "price";
 
-    let base: Pick<ResolvedLine, "productId" | "productCode" | "name" | "unit" | "isService" | "listPriceSatang" | "minPriceSatang"> | null = null;
+    let base: Pick<ResolvedLine, "productId" | "productCode" | "name" | "nameEn" | "unit" | "isService" | "listPriceSatang" | "minPriceSatang"> | null = null;
     if (item.productId) {
       const p = products.get(item.productId);
       if (!p) errs.product = "invalid";
       else if (!p.active) errs.product = "productInactive";
-      else base = { productId: p.id, productCode: p.code, name: p.name, unit: p.unit, isService: p.isService, listPriceSatang: p.listPriceSatang, minPriceSatang: p.minPriceSatang };
+      else base = { productId: p.id, productCode: p.code, name: p.name, nameEn: p.nameEn, unit: p.unit, isService: p.isService, listPriceSatang: p.listPriceSatang, minPriceSatang: p.minPriceSatang };
     } else {
       if (!item.name) errs.name = "required";
       if (!item.unit) errs.unit = "required";
-      base = { productId: null, productCode: null, name: item.name, unit: item.unit, isService: false, listPriceSatang: null, minPriceSatang: null };
+      base = { productId: null, productCode: null, name: item.name, nameEn: null, unit: item.unit, isService: false, listPriceSatang: null, minPriceSatang: null };
     }
     if (Object.keys(errs).length > 0 || !base) {
       lineErrors[i] = errs;
@@ -307,10 +308,11 @@ export async function getQuotationForViewer(viewer: Viewer, id: string) {
   const q = await prisma.quotation.findUnique({
     where: { id },
     include: {
-      company: { select: { id: true, code: true, nameTh: true } },
+      company: { select: { id: true, code: true, nameTh: true, senderEmail: true } },
       owner: { select: { id: true, name: true } },
       items: { orderBy: { position: "asc" } },
-      revisions: { orderBy: { revision: "asc" }, select: { revision: true, sentAt: true } },
+      revisions: { orderBy: { revision: "asc" }, select: { revision: true, sentAt: true, pdfKey: true } },
+      emails: { orderBy: { sentAt: "desc" }, select: { id: true, revision: true, to: true, cc: true, sentAt: true } },
     },
   });
   if (!q || !canViewQuotation(viewer, q)) return null;

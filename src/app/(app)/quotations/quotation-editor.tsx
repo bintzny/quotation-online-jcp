@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-export type EditorCompany = { id: string; label: string; vatRateBp: number; defaultValidityDays: number; terms: string };
+export type EditorCompany = { id: string; label: string; vatRateBp: number; defaultValidityDays: number; terms: string; termsEn: string };
 export type EditorContact = { id: string; name: string; isPrimary: boolean };
 export type EditorCustomer = { id: string; name: string; detail: string; creditDays: number; contacts: EditorContact[] };
 export type EditorDiscount = { type: DiscountType; value: string };
@@ -42,6 +42,7 @@ export type EditorInitial = {
   note: string;
   terms: string;
   billDiscount: EditorDiscount;
+  pdfLanguage: "TH" | "EN";
   items: EditorLine[];
 };
 
@@ -85,7 +86,7 @@ function computeTotals(items: EditorLine[], bill: EditorDiscount, vatRateBp: num
 
 function payloadOf(s: {
   companyId: string; customer: EditorCustomer | null; contactId: string; validityDays: string; creditDays: string;
-  note: string; terms: string; billDiscount: EditorDiscount; items: EditorLine[];
+  note: string; terms: string; billDiscount: EditorDiscount; pdfLanguage: "TH" | "EN"; items: EditorLine[];
 }, version?: number) {
   return {
     companyId: s.companyId,
@@ -96,6 +97,7 @@ function payloadOf(s: {
     note: s.note,
     terms: s.terms,
     billDiscount: s.billDiscount,
+    pdfLanguage: s.pdfLanguage,
     items: s.items.map((l) => ({
       productId: l.productId ?? "",
       name: l.productId ? "" : l.name,
@@ -139,6 +141,7 @@ export function QuotationEditor({
   const [creditDays, setCreditDays] = useState(initial.creditDays);
   const [note, setNote] = useState(initial.note);
   const [terms, setTerms] = useState(initial.terms);
+  const [pdfLanguage, setPdfLanguage] = useState<"TH" | "EN">(initial.pdfLanguage);
   const [billDiscount, setBillDiscount] = useState<EditorDiscount>(initial.billDiscount);
   const [items, setItems] = useState<EditorLine[]>(initial.items);
   const [approval, setApproval] = useState<Record<string, ApprovalReason | null>>(initialApproval);
@@ -146,7 +149,7 @@ export function QuotationEditor({
 
   const company = companies.find((c) => c.id === companyId) ?? companies[0];
   const { lineAmounts, totals } = useMemo(() => computeTotals(items, billDiscount, company?.vatRateBp ?? 0), [items, billDiscount, company]);
-  const snapshot = { companyId, customer, contactId, validityDays, creditDays, note, terms, billDiscount, items };
+  const snapshot = { companyId, customer, contactId, validityDays, creditDays, note, terms, billDiscount, pdfLanguage, items };
   const payloadJson = JSON.stringify(payloadOf(snapshot, version));
 
   // Warn before leaving with unsaved changes.
@@ -242,7 +245,7 @@ export function QuotationEditor({
                 change(setCompanyId)(e.target.value);
                 if (next && !quotationId) {
                   setValidityDays(String(next.defaultValidityDays));
-                  setTerms(next.terms);
+                  setTerms(pdfLanguage === "EN" ? next.termsEn : next.terms);
                 }
               }}
             >
@@ -272,6 +275,23 @@ export function QuotationEditor({
               <Input id={`${uid}-credit`} inputMode="numeric" value={creditDays} onChange={(e) => change(setCreditDays)(e.target.value)} />
             </Field>
           </div>
+          <Field label={t("pdfLanguage")} htmlFor={`${uid}-lang`} hint={t("pdfLanguageHint")}>
+            <NativeSelect
+              id={`${uid}-lang`}
+              value={pdfLanguage}
+              onChange={(e) => {
+                const next = e.target.value as "TH" | "EN";
+                // swap the company's default terms when they were not edited
+                if (company && terms === (pdfLanguage === "TH" ? company.terms : company.termsEn)) {
+                  setTerms(next === "TH" ? company.terms : company.termsEn);
+                }
+                change(setPdfLanguage)(next);
+              }}
+            >
+              <option value="TH">{t("languageTh")}</option>
+              <option value="EN">{t("languageEn")}</option>
+            </NativeSelect>
+          </Field>
         </div>
       </FormSection>
 

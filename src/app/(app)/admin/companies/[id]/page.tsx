@@ -5,6 +5,8 @@ import { requireRole } from "@/server/session";
 import { updateCompanyAction } from "@/server/actions/companies";
 import { basisPointsToPercent } from "@/server/domain/money";
 import { PageHeader } from "@/components/page-header";
+import { ImageUpload } from "@/components/image-upload";
+import { removeCompanyLogoAction, uploadCompanyLogoAction } from "@/server/actions/files";
 import { CompanyForm } from "../company-form";
 
 export default async function EditCompanyPage({ params }: PageProps<"/admin/companies/[id]">) {
@@ -40,6 +42,15 @@ export default async function EditCompanyPage({ params }: PageProps<"/admin/comp
           active: c.active,
         }}
       />
+      <div className="mt-8 rounded-xl border p-4">
+        <ImageUpload
+          label={t("files.companyLogo")}
+          hint={t("files.logoHint")}
+          previewUrl={c.logoKey ? `/api/files/logo/${c.id}?k=${c.logoKey.slice(-12, -4)}` : null}
+          upload={uploadCompanyLogoAction.bind(null, c.id)}
+          remove={removeCompanyLogoAction.bind(null, c.id)}
+        />
+      </div>
     </div>
   );
 }

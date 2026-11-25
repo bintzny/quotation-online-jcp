@@ -27,7 +27,7 @@ export default async function EditQuotationPage({ params, searchParams }: PagePr
   // The quotation's company stays even if the user lost access to it since (its number belongs to it).
   let companies = await editorCompanies(user.id);
   if (!companies.some((c) => c.id === q.companyId)) {
-    companies = [{ id: q.companyId, label: `${q.company.code} · ${q.company.nameTh}`, vatRateBp: q.vatRateBp, defaultValidityDays: q.validityDays, terms: "" }];
+    companies = [{ id: q.companyId, label: `${q.company.code} · ${q.company.nameTh}`, vatRateBp: q.vatRateBp, defaultValidityDays: q.validityDays, terms: "", termsEn: "" }];
   }
   const { initial, approval } = await editorInitialFromQuotation(q);
   const skipped = typeof sp.skipped === "string" ? Number(sp.skipped) : 0;
