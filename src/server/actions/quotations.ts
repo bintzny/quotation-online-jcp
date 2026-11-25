@@ -367,6 +367,8 @@ async function issueToCustomer(id: string, version: number, email: EmailRequest 
         data: { status: "SENT", sentAt: now, issueDate, validUntil, version: { increment: 1 } },
       });
       if (updated.count !== 1) throw new Refusal({ error: "quotations.errors.staleVersion" });
+      // The first send fixes the month and the salesperson credited with the proposed value (M7).
+      await tx.quotation.updateMany({ where: { id, firstSentAt: null }, data: { firstSentAt: now, firstSentById: user.id } });
       const fresh = await tx.quotation.findUniqueOrThrow({ where: { id }, include: { items: { orderBy: { position: "asc" } } } });
       await tx.quotationRevision.create({
         data: {

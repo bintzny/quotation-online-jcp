@@ -11,6 +11,10 @@ import { pendingTransferCount } from "@/server/services/transfers";
 import { getDormantMonths } from "@/server/settings";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
+import { prisma } from "@/server/db";
+import { NativeSelect } from "@/components/form";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { DownloadIcon } from "lucide-react";
 import { TransferList } from "./transfer-list";
 
 export async function generateMetadata() {
@@ -27,6 +31,7 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
   if (!manager && !canCreateQuotation(viewer)) notFound();
   const sp = await searchParams;
   const view = sp.view === "lost" ? "lost" : "dormant";
+  const companyFilter = manager && typeof sp.company === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(sp.company) ? sp.company : undefined;
   const ownerFilter = manager && typeof sp.owner === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(sp.owner) ? sp.owner : undefined;
   const t = await getTranslations("dormant");
   const format = await getFormatter();
@@ -70,7 +75,12 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
       <div className="grid max-w-3xl gap-6">
         <PageHeader title={t("title")} />
         <p className="text-sm text-muted-foreground">{t("salesHint", { months })}</p>
-        <Link href="/customers/transfers" className="w-fit text-sm underline underline-offset-2">{t("myRequestsLink")}</Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/customers/transfers" className="w-fit text-sm underline underline-offset-2">{t("myRequestsLink")}</Link>
+          {/* A file download from a route handler, not a page: a plain link on purpose. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/api/reports/dormant" className={buttonVariants({ variant: "outline", size: "sm" })}><DownloadIcon />{t("exportExcel")}</a>
+        </div>
         {active.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{t("emptyOwn")}</p> : list(active)}
         {snoozed.length > 0 && (
           <section className="grid gap-2">
@@ -83,11 +93,12 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
   }
 
   // ── Executives / admins: overview, filter and transfer ──
-  const [dormant, lost, owners, pendingRequests] = await Promise.all([
-    listDormant({ months, scope: "dormant" }),
-    listDormant({ months, scope: "lost" }),
+  const [dormant, lost, owners, pendingRequests, companies] = await Promise.all([
+    listDormant({ months, scope: "dormant", companyId: companyFilter }),
+    listDormant({ months, scope: "lost", companyId: companyFilter }),
     listAssignableOwners(),
     pendingTransferCount(),
+    prisma.company.findMany({ select: { id: true, code: true }, orderBy: { code: "asc" } }),
   ]);
   const summary = summarize(dormant, lost);
   const source = view === "lost" ? lost : dormant;
@@ -98,13 +109,34 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
     if ((o.view ?? view) === "lost") p.set("view", "lost");
     const owner = "owner" in o ? o.owner : ownerFilter;
     if (owner) p.set("owner", owner);
+    if (companyFilter) p.set("company", companyFilter);
     const s = p.toString();
     return `/customers/dormant${s ? `?${s}` : ""}`;
   };
 
+  const exportQs = new URLSearchParams();
+  if (view === "lost") exportQs.set("view", "lost");
+  if (ownerFilter) exportQs.set("owner", ownerFilter);
+  if (companyFilter) exportQs.set("company", companyFilter);
+
   return (
     <div className="grid max-w-4xl gap-6">
-      <PageHeader title={t("title")} />
+      <PageHeader title={t("title")} actions={
+        <a href={`/api/reports/dormant?${exportQs}`} className={buttonVariants({ variant: "outline" })}><DownloadIcon />{t("exportExcel")}</a>
+      } />
+      <form method="get" className="flex flex-wrap items-end gap-2" aria-label={t("companyFilter")}>
+        {view === "lost" && <input type="hidden" name="view" value="lost" />}
+        {ownerFilter && <input type="hidden" name="owner" value={ownerFilter} />}
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          {t("companyFilter")}
+          <NativeSelect name="company" defaultValue={companyFilter ?? ""} className="w-44">
+            <option value="">{t("allCompanies")}</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
+          </NativeSelect>
+        </label>
+        <Button type="submit" variant="outline">{t("applyFilter")}</Button>
+      </form>
+      {companyFilter && <p className="-mt-4 text-xs text-muted-foreground">{t("companyFilterHelp")}</p>}
       <p className="text-sm text-muted-foreground">{t("managerHint", { months })}</p>
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { requireRole } from "@/server/session";
 import { getDormantMonths } from "@/server/settings";
@@ -20,6 +21,10 @@ export default async function SettingsPage() {
       <FormSection title={t("dormantTitle")}>
         <p className="text-sm text-muted-foreground">{t("dormantHint")}</p>
         <DormantMonthsForm months={months} />
+      </FormSection>
+      <FormSection title={t("targetsTitle")}>
+        <p className="text-sm text-muted-foreground">{t("targetsHint")}</p>
+        <Link href="/targets" className="w-fit text-sm underline underline-offset-2">{t("targetsLink")}</Link>
       </FormSection>
     </div>
   );

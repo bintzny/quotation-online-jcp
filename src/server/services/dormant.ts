@@ -17,6 +17,14 @@ export function dormantWhere(months: number, now = new Date()): Prisma.CustomerW
   };
 }
 
+/**
+ * Customers count as belonging to a company when they bought from it (Express import) or have any
+ * quotation from it — customers themselves are shared by all companies.
+ */
+export function customerInCompany(companyId: string): Prisma.CustomerWhereInput {
+  return { OR: [{ expressSales: { some: { companyId } } }, { quotations: { some: { companyId } } }] };
+}
+
 type Stats = { wonSatang: number; openQuotations: number; lastContact: Date | null };
 
 /** Won value in the 12 months up to the last purchase, open quotations and the latest contact. */
@@ -52,17 +60,23 @@ export type DormantRow = Awaited<ReturnType<typeof listDormant>>[number];
  * Inactive customers (status ACTIVE) or lost ones, oldest purchase first. The caller decides who may
  * see which owners' customers (a salesperson passes their own id).
  */
-export async function listDormant(opts: { months: number; scope: "dormant" | "lost"; ownerId?: string; now?: Date }) {
+export async function listDormant(opts: {
+  months: number; scope: "dormant" | "lost"; ownerId?: string; now?: Date;
+  /** Customers who bought from or were quoted by this company (customers are shared by all companies). */
+  companyId?: string;
+  take?: number;
+}) {
   const now = opts.now ?? new Date();
   const where: Prisma.CustomerWhereInput = opts.scope === "lost"
     ? { status: "LOST" }
     : { status: "ACTIVE", ownerId: { not: null }, ...dormantWhere(opts.months, now) };
   if (opts.ownerId) where.ownerId = opts.ownerId;
+  if (opts.companyId) where.AND = [customerInCompany(opts.companyId)];
   const rows = await prisma.customer.findMany({
     where,
     orderBy: opts.scope === "lost" ? [{ lostAt: "desc" }] : [{ lastPurchaseDate: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }],
     select: DORMANT_FIELDS,
-    take: 5000,
+    take: opts.take ?? 5000,
   });
   const stats = await customerStats(rows.map((r) => r.id));
   return rows

@@ -51,6 +51,7 @@ model User {
   accounts         Account[]
   twoFactors       TwoFactor[]
   auditLogs        AuditLog[]
+  salesTargets     SalesTarget[]
 
   @@map("user")
 }
@@ -472,13 +473,15 @@ model Quotation {
   totalSatang         BigInt
   requiresApproval    Boolean
 
-  note         String?
-  terms        String?
-  cancelReason String?
-  sentAt       DateTime?   @db.Timestamptz(3)
-  cancelledAt  DateTime?   @db.Timestamptz(3)
-  copiedFromId String?
-  pdfLanguage  DocLanguage @default(TH) // language of the PDF given to the customer
+  note          String?
+  terms         String?
+  cancelReason  String?
+  sentAt        DateTime?   @db.Timestamptz(3)
+  firstSentAt   DateTime?   @db.Timestamptz(3) // first time any revision was sent (M7: proposed value month)
+  firstSentById String? // owner who first sent it (proposed value is credited to them)
+  cancelledAt   DateTime?   @db.Timestamptz(3)
+  copiedFromId  String?
+  pdfLanguage   DocLanguage @default(TH) // language of the PDF given to the customer
 
   // M5: follow-up and closing
   nextFollowupOn  DateTime?   @db.Date // from the latest quotation follow-up; null = nothing scheduled
@@ -506,6 +509,8 @@ model Quotation {
   @@index([companyId, createdAt])
   @@index([customerId])
   @@index([status, validUntil])
+  @@index([firstSentAt])
+  @@index([closedAt])
   @@map("quotation")
 }
 
@@ -722,4 +727,19 @@ model Followup {
   @@index([quotationId, createdAt])
   @@index([customerId, createdAt])
   @@map("followup")
+}
+
+/// Monthly Won target (before VAT) of one salesperson, all companies together (M7).
+model SalesTarget {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month        DateTime @db.Date // first day of the month
+  amountSatang BigInt
+  updatedById  String?
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([userId, month])
+  @@index([month])
+  @@map("sales_target")
 }

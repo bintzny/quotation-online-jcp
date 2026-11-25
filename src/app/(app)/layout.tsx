@@ -24,10 +24,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   const items: NavItem[] = [
     { href: "/", label: t("nav.home"), exact: true },
+    ...(seesQuotations ? [{ href: "/dashboard", label: t("nav.dashboard") }] : []),
     ...(isExecutive ? [{ href: "/approvals", label: pendingApprovals > 0 ? t("nav.approvalsCount", { count: pendingApprovals }) : t("nav.approvals") }] : []),
     ...(seesQuotations ? [{ href: "/quotations", label: t("nav.quotations") }] : []),
     { href: "/customers", label: t("nav.customers"), exact: false },
     { href: "/products", label: t("nav.products") },
+    ...(seesQuotations ? [{ href: "/reports", label: t("nav.reports") }] : []),
   ];
   if (isManager) {
     items.push({ href: "/customers/pending", label: t("nav.pendingOwners") });
@@ -35,6 +37,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   } else if (seesQuotations) {
     items.push({ href: "/customers/dormant", label: t("nav.dormant") });
   }
+  if (isManager) items.push({ href: "/audit", label: t("nav.audit") });
   if (isAdmin) {
     items.push({ href: "/admin/import", label: t("nav.imports") });
     items.push({ href: "/admin/users", label: t("nav.users") });

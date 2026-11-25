@@ -7,6 +7,7 @@ import { quotationFollowups } from "@/server/services/followups";
 import { recordFollowupAction } from "@/server/actions/followups";
 import { FollowupForm } from "@/components/followup-form";
 import { FollowupLog } from "@/components/followup-log";
+import { QuotationHistory } from "./history";
 import { AttachPo, CloseQuotation } from "./close-quotation";
 import { approvalHistory } from "@/server/services/approvals";
 import { ApprovalHistory } from "./approval-history";
@@ -301,6 +302,8 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
           </ul>
         </FormSection>
       )}
+
+      <QuotationHistory quotationId={q.id} fullLogLink={user.roles.includes("executive")} />
     </div>
   );
 }

@@ -144,3 +144,85 @@ export async function readSheet(file: File, columns: Column[]): Promise<SheetRea
   if (rows.length > MAX_IMPORT_ROWS) return { ok: false, error: "tooManyRows" };
   return { ok: true, rows };
 }
+
+// ── Report exports ──
+
+export type ExportColumn = {
+  header: string;
+  key: string;
+  width: number;
+  type?: "text" | "money" | "date" | "datetime" | "int" | "qty" | "price" | "percent";
+  total?: boolean; // add a SUM formula under this column
+};
+
+export type ExportSheet = { name: string; columns: ExportColumn[]; rows: Record<string, unknown>[]; title?: string[] };
+
+const NUM_FMT: Record<string, string> = {
+  money: "#,##0.00", price: "#,##0.00##", int: "#,##0", qty: "#,##0.###", date: "dd/mm/yyyy", datetime: "dd/mm/yyyy hh:mm", percent: "0.0%",
+};
+
+/** Workbook with one table per sheet: title lines, bold header, frozen header, totals as formulas. */
+export async function buildExport(sheets: ExportSheet[], opts: { totalLabel: string }): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Quotation JCP";
+  wb.calcProperties.fullCalcOnLoad = true;
+  for (const s of sheets) {
+    const titleRows = s.title?.length ?? 0;
+    const headerRow = titleRows + (titleRows > 0 ? 2 : 1);
+    const ws = wb.addWorksheet(s.name, { views: [{ state: "frozen", ySplit: headerRow }] });
+    ws.properties.defaultRowHeight = 18;
+    s.title?.forEach((line, i) => {
+      const cell = ws.getCell(i + 1, 1);
+      cell.value = line;
+      cell.font = { name: "Tahoma", size: i === 0 ? 12 : 10, bold: i === 0 };
+    });
+    s.columns.forEach((c, i) => {
+      const col = ws.getColumn(i + 1);
+      col.width = c.width;
+      const h = ws.getCell(headerRow, i + 1);
+      h.value = c.header;
+      h.font = { name: "Tahoma", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+      h.fill = { type: "pattern", pattern: "solid", fgColor: { argb: HEADER_FILL } };
+      h.alignment = { vertical: "middle", wrapText: true };
+    });
+    ws.getRow(headerRow).height = 30;
+    s.rows.forEach((r, ri) => {
+      const rowNo = headerRow + 1 + ri;
+      s.columns.forEach((c, ci) => {
+        const cell = ws.getCell(rowNo, ci + 1);
+        const v = r[c.key];
+        cell.value = v === undefined || v === null || v === "" ? null : c.type === "text" || !c.type ? String(v) : (v as ExcelJS.CellValue);
+        cell.font = { name: "Tahoma", size: 10 };
+        if (c.type && NUM_FMT[c.type]) cell.numFmt = NUM_FMT[c.type];
+        if (!c.type || c.type === "text") cell.numFmt = "@";
+      });
+    });
+    if (s.columns.some((c) => c.total) && s.rows.length > 0) {
+      // One empty row keeps the total out of the filter/sort range; SUBTOTAL(109) follows the filter.
+      const lastData = headerRow + s.rows.length;
+      const totalRow = lastData + 2;
+      ws.getCell(totalRow, 1).value = opts.totalLabel;
+      s.columns.forEach((c, ci) => {
+        const cell = ws.getCell(totalRow, ci + 1);
+        cell.font = { name: "Tahoma", size: 10, bold: true };
+        if (!c.total) return;
+        const letter = ws.getColumn(ci + 1).letter;
+        const result = s.rows.reduce((sum, r) => sum + (typeof r[c.key] === "number" ? (r[c.key] as number) : 0), 0);
+        cell.value = { formula: `SUBTOTAL(109,${letter}${headerRow + 1}:${letter}${lastData})`, result: Math.round(result * 100) / 100 };
+        cell.numFmt = NUM_FMT[c.type ?? "money"] ?? NUM_FMT.money;
+      });
+    }
+    ws.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: s.columns.length } };
+  }
+  wb.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: 0, activeTab: 0, visibility: "visible" }];
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+/** Response headers for a download with a Thai file name. */
+export function xlsxHeaders(fileName: string): HeadersInit {
+  return {
+    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "Content-Disposition": `attachment; filename="export.xlsx"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    "Cache-Control": "no-store",
+  };
+}

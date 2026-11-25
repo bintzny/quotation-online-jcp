@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/server/db";
+import { instant } from "@/server/sql";
 import { writeAuditMany } from "@/server/audit";
 import { notifyCustomer } from "@/server/notifications";
 import { OPEN_QUOTATION_STATUSES } from "@/server/domain/dormant";
@@ -52,14 +53,14 @@ export async function transferCustomers(
        SET "ownerId" = ${to},
            status = CASE WHEN status = 'PENDING_OWNER' THEN 'ACTIVE'::"CustomerStatus" ELSE status END,
            "dormantSnoozedUntil" = NULL,
-           "dormantNotifiedAt" = ${now},
-           "updatedAt" = ${now}
+           "dormantNotifiedAt" = ${instant(now)},
+           "updatedAt" = ${instant(now)}
      WHERE id = ANY(${movingIds}::text[])`;
   if (pendingIds.length) await tx.customerOwnerCandidate.deleteMany({ where: { customerId: { in: pendingIds } } });
 
   const movedQuotations = await tx.$queryRaw<{ customerId: string }[]>`
     UPDATE "quotation"
-       SET "ownerId" = ${to}, "ownerSince" = ${now}, version = version + 1, "updatedAt" = ${now}
+       SET "ownerId" = ${to}, "ownerSince" = ${instant(now)}, version = version + 1, "updatedAt" = ${instant(now)}
      WHERE "customerId" = ANY(${movingIds}::text[])
        AND status::text = ANY(${[...OPEN_QUOTATION_STATUSES]}::text[])
        AND "ownerId" <> ${to}
@@ -151,7 +152,7 @@ export async function moveLeftoverQuotations(tx: Tx, fromUserId: string, fallbac
   }
   await writeAuditMany(left.map((q) => ({
     actorId: actor.id, action: "quotation.owner_change", entityType: "quotation", entityId: q.id,
-    before: { ownerId: fromUserId }, after: { ownerId: targetOf(q), reason: "owner account transferred" },
+    before: { ownerId: fromUserId }, after: { ownerId: targetOf(q), reason: "ownerLeft" },
   })), tx);
   return left.length;
 }

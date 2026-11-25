@@ -155,7 +155,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </p>
         </CardContent>
       </Card>
-      <p className="text-sm text-muted-foreground">{t("home.comingSoon")}</p>
+      {(sells || user.roles.includes("executive")) && (
+        <Link href="/dashboard" className="w-fit text-sm underline underline-offset-2">{t("home.openDashboard")}</Link>
+      )}
     </div>
   );
 }
