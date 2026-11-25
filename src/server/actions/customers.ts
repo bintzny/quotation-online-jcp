@@ -8,6 +8,8 @@ import { writeAudit } from "@/server/audit";
 import { requireRole, requireUser, type CurrentUser } from "@/server/session";
 import { canEditCustomer, isManager, isValidThaiTaxId, type Viewer } from "@/server/domain/customers";
 import { findByIdentity, findSameTaxIdOtherBranches, findSimilarIndividuals, listAssignableOwners } from "@/server/services/customers";
+import { OPEN_QUOTATION_STATUSES } from "@/server/domain/dormant";
+import { isAssignableOwner, transferCustomers } from "@/server/services/transfers";
 import { changeOwnerSchema, contactSchema, customerSchema, type CustomerInput } from "@/lib/schemas";
 import { echoValues, zodFieldErrors, type FormState } from "./form-state";
 
@@ -190,38 +192,46 @@ export async function changeOwnerAction(customerId: string, _prev: FormState, fo
   const parsed = changeOwnerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: zodFieldErrors(parsed.error) };
   const newOwner = parsed.data.ownerId ?? null;
+  const note = parsed.data.note ?? null;
 
   const c = await prisma.customer.findUnique({
     where: { id: customerId },
     select: { id: true, ownerId: true, status: true },
   });
   if (!c) return { error: "common.notFound" };
-  if (newOwner) {
-    const allowed = await listAssignableOwners();
-    if (!allowed.some((o) => o.id === newOwner)) return { fieldErrors: { ownerId: "invalid" } };
-  }
   const wasPending = c.status === "PENDING_OWNER";
   if (c.ownerId === newOwner && !wasPending) return { ok: true, message: "common.saved" };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.customer.update({
-      where: { id: customerId },
-      data: { ownerId: newOwner, status: wasPending ? "ACTIVE" : c.status },
+  if (newOwner) {
+    // A transfer: open quotations move with the customer (M6).
+    if (!(await isAssignableOwner(prisma, newOwner))) return { fieldErrors: { ownerId: "invalid" } };
+    await prisma.$transaction((tx) => transferCustomers(tx, { customerIds: [customerId], toUserId: newOwner, actor: manager, note }), { timeout: 60_000 });
+  } else {
+    // Leaving the customer without an owner: open quotations would have nobody to follow them up.
+    const open = await prisma.quotation.count({ where: { customerId, status: { in: [...OPEN_QUOTATION_STATUSES] } } });
+    if (open > 0) return { error: "customers.errors.openQuotationsNeedOwner" };
+    await prisma.$transaction(async (tx) => {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { ownerId: null, status: wasPending ? "ACTIVE" : c.status },
+      });
+      if (wasPending) await tx.customerOwnerCandidate.deleteMany({ where: { customerId } });
+      await tx.customerOwnerHistory.create({
+        data: {
+          customerId, fromUserId: c.ownerId, toUserId: null, changedById: manager.id,
+          reason: wasPending ? "PENDING_RESOLVED" : "TRANSFER", note,
+        },
+      });
+      await writeAudit({
+        actorId: manager.id, action: wasPending ? "customer.owner_resolve" : "customer.owner_change", entityType: "customer",
+        entityId: customerId, before: { ownerId: c.ownerId, status: c.status }, after: { ownerId: null, status: wasPending ? "ACTIVE" : c.status },
+      }, tx);
     });
-    if (wasPending) await tx.customerOwnerCandidate.deleteMany({ where: { customerId } });
-    await tx.customerOwnerHistory.create({
-      data: {
-        customerId, fromUserId: c.ownerId, toUserId: newOwner, changedById: manager.id,
-        reason: wasPending ? "PENDING_RESOLVED" : "TRANSFER", note: parsed.data.note ?? null,
-      },
-    });
-    await writeAudit({
-      actorId: manager.id, action: wasPending ? "customer.owner_resolve" : "customer.owner_change", entityType: "customer",
-      entityId: customerId, before: { ownerId: c.ownerId, status: c.status }, after: { ownerId: newOwner, status: "ACTIVE" },
-    }, tx);
-  });
+  }
   revalidatePath(`/customers/${customerId}`);
   revalidatePath("/customers");
   revalidatePath("/customers/pending");
+  revalidatePath("/customers/dormant");
+  revalidatePath("/quotations");
   return { ok: true, message: "common.saved" };
 }

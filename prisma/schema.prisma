@@ -39,13 +39,14 @@ model User {
   lockedUntil        DateTime? @db.Timestamptz(3)
   signatureKey       String? // storage key of the signature image printed on quotations
 
-  company          Company?                 @relation(fields: [companyId], references: [id])
+  company          Company?                  @relation(fields: [companyId], references: [id])
   extraCompanies   UserCompany[]
-  ownedCustomers   Customer[]               @relation("CustomerOwner")
+  ownedCustomers   Customer[]                @relation("CustomerOwner")
   ownerCandidacies CustomerOwnerCandidate[]
-  ownedQuotations  Quotation[]              @relation("QuotationOwner")
+  ownedQuotations  Quotation[]               @relation("QuotationOwner")
   notifications    Notification[]
   followups        Followup[]
+  transferRequests CustomerTransferRequest[] @relation("TransferRequester")
   sessions         Session[]
   accounts         Account[]
   twoFactors       TwoFactor[]
@@ -148,6 +149,7 @@ model Company {
   users                User[]
   userCompanies        UserCompany[]
   customerExpressCodes CustomerExpressCode[]
+  customerExpressSales CustomerExpressSale[]
   quotations           Quotation[]
   docSequences         DocSequence[]
 
@@ -178,6 +180,69 @@ enum CustomerStatus {
   LOST // marked lost by the owner (M6)
 }
 
+enum CustomerLostReason {
+  CLOSED_BUSINESS // เลิกกิจการ
+  COMPETITOR // ย้ายไปใช้คู่แข่ง
+  OTHER
+}
+
+/// Result chosen when the owner records a contact with an inactive customer.
+enum DormantOutcome {
+  STILL_CUSTOMER // no reminder for 30 days
+  CLOSED_BUSINESS
+  COMPETITOR
+  OTHER
+}
+
+enum TransferRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED // withdrawn by the requester, or the customer was transferred another way
+}
+
+/// A salesperson asks to take over another salesperson's inactive customer; an executive decides.
+model CustomerTransferRequest {
+  id           String                @id @default(cuid())
+  customerId   String
+  customer     Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  requesterId  String
+  requester    User                  @relation("TransferRequester", fields: [requesterId], references: [id])
+  fromOwnerId  String? // owner when the request was made
+  reason       String
+  status       TransferRequestStatus @default(PENDING)
+  decidedById  String?
+  decidedAt    DateTime?             @db.Timestamptz(3)
+  decisionNote String?
+  createdAt    DateTime              @default(now()) @db.Timestamptz(3)
+
+  // one open request per salesperson and customer: partial unique index in the migration
+  @@index([status, createdAt])
+  @@index([customerId, status])
+  @@map("customer_transfer_request")
+}
+
+/// Small admin-adjustable values (key → JSON value).
+model Setting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("setting")
+}
+
+/// Periodic emails already sent (each person gets one per period).
+model MailDigest {
+  userId      String
+  kind        String // "dormant-weekly"
+  periodStart DateTime @db.Date
+  sentAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([userId, kind, periodStart])
+  @@map("mail_digest")
+}
+
 /// One shared customer list for all 3 companies. Each customer has at most one owner.
 model Customer {
   id               String         @id @default(cuid())
@@ -194,18 +259,29 @@ model Customer {
   status           CustomerStatus @default(ACTIVE)
   ownerId          String?
   owner            User?          @relation("CustomerOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  lastPurchaseDate DateTime?      @db.Date // M6
+  lastPurchaseDate DateTime?      @db.Date // the later of the last Won here and the last Express sale
   nextFollowupOn   DateTime?      @db.Date // next customer-level follow-up (from the latest one)
   createdById      String?
-  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
 
-  contacts        CustomerContact[]
-  ownerHistory    CustomerOwnerHistory[]
-  ownerCandidates CustomerOwnerCandidate[]
-  expressCodes    CustomerExpressCode[]
-  quotations      Quotation[]
-  followups       Followup[]
+  // M6: inactive customers ("ลูกค้าที่หายไป")
+  expressLastSaleDate   DateTime?           @db.Date // from the monthly Express file
+  expressSales12mSatang BigInt? // optional "sales in the last 12 months" from that file
+  dormantSnoozedUntil   DateTime?           @db.Date // owner said "still a customer": no reminder until after this day
+  dormantNotifiedAt     DateTime?           @db.Timestamptz(3) // bell once per inactive period
+  lostReason            CustomerLostReason?
+  lostNote              String?
+  lostAt                DateTime?           @db.Timestamptz(3)
+  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime            @updatedAt @db.Timestamptz(3)
+
+  contacts         CustomerContact[]
+  ownerHistory     CustomerOwnerHistory[]
+  ownerCandidates  CustomerOwnerCandidate[]
+  expressCodes     CustomerExpressCode[]
+  expressSales     CustomerExpressSale[]
+  quotations       Quotation[]
+  followups        Followup[]
+  transferRequests CustomerTransferRequest[]
 
   // Blocks duplicate juristic customers (NULL tax IDs never collide).
   @@unique([taxId, branchCode])
@@ -213,6 +289,7 @@ model Customer {
   @@index([status])
   @@index([name])
   @@index([ownerId, nextFollowupOn])
+  @@index([lastPurchaseDate])
   @@map("customer")
 }
 
@@ -279,6 +356,22 @@ model CustomerExpressCode {
   @@id([companyId, code])
   @@index([customerId])
   @@map("customer_express_code")
+}
+
+/// Last sale date (and optional 12-month sales) per customer and company, from the monthly Express
+/// file of that company. customer.expressLastSaleDate / expressSales12mSatang hold the latest date and
+/// the sum over companies (M6).
+model CustomerExpressSale {
+  customerId     String
+  companyId      String
+  lastSaleDate   DateTime @db.Date
+  sales12mSatang BigInt?
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([customerId, companyId])
+  @@map("customer_express_sale")
 }
 
 // ───────────────────────────── Products ─────────────────────────────
@@ -349,7 +442,8 @@ model Quotation {
   customer    Customer        @relation(fields: [customerId], references: [id])
   ownerId     String
   owner       User            @relation("QuotationOwner", fields: [ownerId], references: [id])
-  createdById String
+  ownerSince  DateTime?       @db.Timestamptz(3) // set when the customer was transferred while this was open (M6)
+  createdById String // the original creator ("ผู้สร้างเดิม"); stays when the quotation moves
   status      QuotationStatus @default(DRAFT)
 
   issueDate    DateTime @db.Date
@@ -504,6 +598,13 @@ enum NotificationType {
   APPROVAL_REMINDER
   QUOTATION_EXPIRED // M5
   FOLLOWUP_STALE // M5: sent quotation without a follow-up for 7 days
+  CUSTOMER_DORMANT // M6: an owned customer has not bought for the set period
+  CUSTOMER_TRANSFERRED_IN // M6: you are the new owner
+  CUSTOMER_TRANSFERRED_OUT // M6: a customer of yours was given to someone else
+  TRANSFER_REQUESTED // M6: to executives
+  TRANSFER_APPROVED // M6: to the requester
+  TRANSFER_REJECTED // M6: to the requester
+  QUOTATIONS_TRANSFERRED_IN // M6: open quotations handed over when an account's work is transferred
 }
 
 /// The bell in the header.
@@ -513,6 +614,7 @@ model Notification {
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type        NotificationType
   quotationId String?
+  customerId  String? // customer notifications (M6)
   data        Json // { number, customer, actor } for the message
   readAt      DateTime?        @db.Timestamptz(3)
   createdAt   DateTime         @default(now()) @db.Timestamptz(3)
@@ -545,6 +647,7 @@ model QuotationEmail {
 enum ImportKind {
   CUSTOMERS
   PRODUCTS
+  LAST_SALES // monthly "last sale date per customer" from Express (M6)
 }
 
 model ImportBatch {
@@ -613,6 +716,7 @@ model Followup {
   channel     FollowupChannel
   detail      String
   nextDate    DateTime?       @db.Date
+  outcome     DormantOutcome? // customer-level contact with an inactive customer (M6)
   createdAt   DateTime        @default(now()) @db.Timestamptz(3)
 
   @@index([quotationId, createdAt])

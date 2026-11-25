@@ -26,7 +26,8 @@ export default async function NotificationsPage() {
       ) : (
         <ul className="grid gap-2">
           {items.map((n) => {
-            const d = n.data as { number?: string; customer?: string; actor?: string };
+            const d = n.data as { number?: string; customer?: string; actor?: string; count?: number };
+            const many = typeof d.count === "number" && d.count > 1;
             return (
               <li key={n.id}>
                 <Link
@@ -35,7 +36,7 @@ export default async function NotificationsPage() {
                   className={cn("grid gap-0.5 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50", !n.readAt && "border-primary/40 bg-primary/5")}
                 >
                   <span className={cn(!n.readAt && "font-medium")}>
-                    {t(`types.${n.type}`, { number: d.number ?? "", customer: d.customer ?? "", actor: d.actor ?? "" })}
+                    {t(many ? `types.${n.type}_MANY` : `types.${n.type}`, { number: d.number ?? "", customer: d.customer ?? "", actor: d.actor ?? "", count: d.count ?? 0 })}
                   </span>
                   <span className="text-xs text-muted-foreground">{format.dateTime(n.createdAt, { dateStyle: "medium", timeStyle: "short" })}</span>
                 </Link>

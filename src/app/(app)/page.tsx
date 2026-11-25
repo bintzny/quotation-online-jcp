@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
-import { BellOffIcon, Building2Icon, CalendarClockIcon, FileTextIcon } from "lucide-react";
+import { BellOffIcon, Building2Icon, CalendarClockIcon, FileTextIcon, UserXIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/server/db";
 import { requireUser } from "@/server/session";
@@ -9,6 +9,8 @@ import { canCreateQuotation } from "@/server/domain/quotations";
 import { displayNumber } from "@/server/domain/numbering";
 import { formatSatang } from "@/server/domain/money";
 import { followupWorklist } from "@/server/services/followups";
+import { listDormant } from "@/server/services/dormant";
+import { getDormantMonths } from "@/server/settings";
 import { cn } from "@/lib/utils";
 
 const DAY = 86_400_000;
@@ -23,6 +25,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const { passwordChanged } = await searchParams;
   const sells = canCreateQuotation({ id: user.id, roles: user.roles });
   const work = sells ? await followupWorklist(user.id) : null;
+  const months = sells ? await getDormantMonths() : 0;
+  const dormant = sells ? (await listDormant({ months, scope: "dormant", ownerId: user.id })).filter((r) => !r.snoozedUntil) : [];
+  const DORMANT_SHOWN = 10;
   const day = (d: Date) => format.dateTime(d, { dateStyle: "medium", timeZone: "UTC" });
   const dueLabel = (d: Date) => {
     const late = Math.round((work!.today.getTime() - d.getTime()) / DAY);
@@ -104,6 +109,37 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {sells && dormant.length > 0 && (
+        <section className="grid gap-3" aria-labelledby="dormant-title">
+          <h2 id="dormant-title" className="flex items-center gap-2 text-lg font-semibold">
+            <UserXIcon className="size-5" />
+            {t("home.dormantTitle", { months })}
+            <span className="rounded-full bg-muted px-2 text-xs font-medium">{dormant.length}</span>
+          </h2>
+          <ul className="grid gap-2">
+            {dormant.slice(0, DORMANT_SHOWN).map((c) => (
+              <li key={c.id}>
+                <Link href={`/customers/${c.id}`} className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50">
+                  <Building2Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <span className="grid min-w-0 flex-1 gap-0.5">
+                    <span className="truncate font-medium">{c.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {c.lastPurchaseDate ? t("home.dormantLast", { date: day(c.lastPurchaseDate) }) : t("home.dormantNever")}
+                      {c.purchasesSatang > 0 ? ` · ${t("home.dormantPurchases", { amount: formatSatang(c.purchasesSatang) })}` : ""}
+                      {c.openQuotations > 0 ? ` · ${t("home.dormantOpen", { count: c.openQuotations })}` : ""}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400">{t("home.dormantDays", { days: c.days })}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {dormant.length > DORMANT_SHOWN && (
+            <Link href="/customers/dormant" className="w-fit text-sm underline underline-offset-2">{t("home.dormantAll", { count: dormant.length })}</Link>
+          )}
         </section>
       )}
 

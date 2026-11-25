@@ -126,7 +126,7 @@ try {
   check("executive sees customer contacts", exCust.status === 200 && exCust.text.includes(secretNote));
 
   // ── daily cron ──
-  const cron = (auth) => fetch(`${BASE}/api/cron/quotations-daily`, { method: "POST", headers: auth ? { authorization: auth } : {} });
+  const cron = (auth) => fetch(`${BASE}/api/cron/daily`, { method: "POST", headers: auth ? { authorization: auth } : {} });
   check("daily cron without a secret: 404", (await cron(null)).status === 404);
   check("daily cron with a wrong secret: 404", (await cron("Bearer wrong-secret-wrong-secret-wrong-secret")).status === 404);
   if (process.env.CRON_SECRET) {

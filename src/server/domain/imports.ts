@@ -364,3 +364,91 @@ export function parseProductRow(raw: Record<string, unknown>, rowNumber: number)
     },
   };
 }
+
+// ── Last sale dates from Express (M6) ─────────────────────────────────
+
+export const LAST_SALE_COLUMNS: Column[] = [
+  { key: "expressCode", header: "รหัสลูกค้า (Express)", width: 18, example: "C0001" },
+  { key: "taxId", header: "เลขประจำตัวผู้เสียภาษี", width: 20, example: "0105561234560" },
+  { key: "branchCode", header: "รหัสสาขา (00000 = สำนักงานใหญ่)", width: 24, example: "00000" },
+  { key: "name", header: "ชื่อลูกค้า", width: 36, example: "บริษัท ตัวอย่าง จำกัด" },
+  { key: "lastSaleDate", header: "วันที่ขายล่าสุด", width: 16, required: true, example: "20/11/2569" },
+  { key: "sales12m", header: "ยอดขาย 12 เดือนล่าสุด (บาท ก่อน VAT)", width: 26, example: 125000 },
+];
+
+export type LastSaleRow = {
+  rowNumber: number;
+  expressCode: string | null;
+  taxId: string | null;
+  branchCode: string;
+  lastSaleDate: Date;
+  sales12mSatang: number | null; // null = column empty (keep the stored figure)
+};
+
+/** `parseDate` / `checkDate` come from the dormant rules (kept there with the other date rules). */
+export function parseLastSaleRow(
+  raw: Record<string, unknown>,
+  rowNumber: number,
+  parseDate: (v: unknown) => Date | null,
+  checkDate: (d: Date) => string | null,
+): { ok: true; row: LastSaleRow; amountIgnored: boolean } | { ok: false; errors: RowError[] } {
+  const errors: RowError[] = [];
+  const expressCode = text(raw.expressCode, 40)?.toUpperCase() ?? null;
+  const rawTax = text(raw.taxId, 30);
+  const taxId = rawTax ? normalizeTaxId(rawTax) : null;
+  if (rawTax && !taxId) errors.push({ field: "taxId", code: "taxId" });
+  const branchCode = normalizeBranchCode(raw.branchCode);
+  if (!branchCode) errors.push({ field: "branchCode", code: "branchCode" });
+  if (!expressCode && !rawTax) errors.push({ field: "expressCode", code: "codeOrTaxIdRequired" });
+
+  const date = parseDate(raw.lastSaleDate);
+  if (!date) errors.push({ field: "lastSaleDate", code: raw.lastSaleDate === null || raw.lastSaleDate === undefined || raw.lastSaleDate === "" ? "required" : "date" });
+  else {
+    const bad = checkDate(date);
+    if (bad) errors.push({ field: "lastSaleDate", code: bad });
+  }
+
+  // The amount is optional: an unreadable one is ignored (reported), the sale date is still used.
+  const amountText = String(raw.sales12m ?? "").replace(/[,\s฿]|บาท/g, "");
+  let sales12mSatang: number | null = null;
+  let amountIgnored = false;
+  if (amountText !== "") {
+    sales12mSatang = parseBahtToSatang(amountText, 1_000_000_000_000);
+    if (sales12mSatang === null) amountIgnored = true;
+  }
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, row: { rowNumber, expressCode, taxId, branchCode: branchCode!, lastSaleDate: date!, sales12mSatang }, amountIgnored };
+}
+
+export type LastSaleMatch = { customerId: string; rowNumber: number; lastSaleDate: Date; sales12mSatang: number | null };
+
+/**
+ * Match rows to customers: the Express code of this company first, then tax ID + branch. A code and
+ * a tax ID that point to different customers is an error. Several rows for one customer: the latest
+ * sale date wins.
+ */
+export function matchLastSales(
+  rows: LastSaleRow[],
+  byCode: Map<string, string>,
+  byIdentity: Map<string, string>,
+): { matches: LastSaleMatch[]; notFound: number[]; errors: { row: number; errors: RowError[] }[] } {
+  const best = new Map<string, LastSaleMatch>();
+  const notFound: number[] = [];
+  const errors: { row: number; errors: RowError[] }[] = [];
+  for (const r of rows) {
+    const viaCode = r.expressCode ? byCode.get(r.expressCode) : undefined;
+    const key = identityKey(r.taxId, r.branchCode);
+    const viaTax = key ? byIdentity.get(key) : undefined;
+    if (viaCode && viaTax && viaCode !== viaTax) {
+      errors.push({ row: r.rowNumber, errors: [{ field: "expressCode", code: "codeTaxIdMismatch" }] });
+      continue;
+    }
+    const customerId = viaCode ?? viaTax;
+    if (!customerId) { notFound.push(r.rowNumber); continue; }
+    const prev = best.get(customerId);
+    if (!prev || r.lastSaleDate > prev.lastSaleDate) {
+      best.set(customerId, { customerId, rowNumber: r.rowNumber, lastSaleDate: r.lastSaleDate, sales12mSatang: r.sales12mSatang });
+    }
+  }
+  return { matches: [...best.values()], notFound, errors };
+}

@@ -4,7 +4,7 @@ import { addDays } from "@/server/domain/numbering";
 import { lastContactDay, quietSince, STALE_AFTER_DAYS, today } from "@/server/domain/followups";
 
 const FOLLOWUP_FIELDS = {
-  id: true, contactedOn: true, channel: true, detail: true, nextDate: true, createdAt: true,
+  id: true, contactedOn: true, channel: true, detail: true, nextDate: true, outcome: true, createdAt: true,
   user: { select: { name: true } },
 } as const;
 

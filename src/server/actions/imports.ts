@@ -7,9 +7,10 @@ import { writeAudit } from "@/server/audit";
 import { requireRole } from "@/server/session";
 import { readSheet } from "@/server/excel";
 import {
-  CUSTOMER_COLUMNS, PRODUCT_COLUMNS, parseCustomerRow, parseProductRow, planCustomerImport,
-  type CustomerPlan, type ExistingCustomer, type ProductRow, type RowError,
+  CUSTOMER_COLUMNS, LAST_SALE_COLUMNS, PRODUCT_COLUMNS, matchLastSales, parseCustomerRow, parseLastSaleRow, parseProductRow, planCustomerImport,
+  type CustomerPlan, type ExistingCustomer, type LastSaleRow, type ProductRow, type RowError,
 } from "@/server/domain/imports";
+import { checkSaleDate, parseSaleDate } from "@/server/domain/dormant";
 import { identityKey } from "@/server/domain/customers";
 import type { OwnerChangeReason, Prisma } from "@/generated/prisma/client";
 
@@ -33,6 +34,9 @@ export type ImportResult =
       mismatches?: { name: string; owner: string; salesCode: string; row: number }[];
       noIdentityRows?: number[];
       duplicates?: number[];
+      notFoundRows?: number[]; // last-sale file: rows that match no customer
+      notFoundCount?: number;
+      amountIgnoredRows?: number[]; // last-sale file: amount unreadable, the date was still used
     };
 
 function chunks<T>(items: T[], size = CHUNK): T[][] {
@@ -317,4 +321,133 @@ export async function importProductsAction(_prev: ImportResult, formData: FormDa
   }, TX_OPTIONS);
   revalidatePath("/products");
   return { ...result, applied: true };
+}
+
+// ── Last sale dates from Express (M6) ─────────────────────────────────
+
+/**
+ * Monthly Express file of one company: last sale date (and optionally 12-month sales) per customer.
+ * Kept per customer and company, so one company's file never overwrites another's. A later sale
+ * date moves the customer's last purchase forward (an older file never moves it back); a lost
+ * customer with a sale in the file after it was marked lost becomes active again.
+ */
+export async function importLastSalesAction(_prev: ImportResult, formData: FormData): Promise<ImportResult> {
+  const admin = await requireRole(["admin"]);
+  const file = formData.get("file");
+  const companyId = String(formData.get("companyId") ?? "");
+  const apply = formData.get("mode") === "apply";
+  if (!(file instanceof File) || file.size === 0) return { fileError: "noFile" };
+  const company = companyId ? await prisma.company.findUnique({ where: { id: companyId }, select: { id: true } }) : null;
+  if (!company) return { fileError: "companyRequired" };
+
+  const sheet = await readSheet(file, LAST_SALE_COLUMNS);
+  if (!sheet.ok) return { fileError: sheet.error, missing: sheet.missing };
+  const now = new Date();
+  const errors: { row: number; errors: RowError[] }[] = [];
+  const amountIgnored: number[] = [];
+  const valid: LastSaleRow[] = [];
+  for (const { rowNumber, raw } of sheet.rows) {
+    const r = parseLastSaleRow(raw, rowNumber, parseSaleDate, (d) => checkSaleDate(d, now));
+    if (!r.ok) { errors.push({ row: rowNumber, errors: r.errors }); continue; }
+    valid.push(r.row);
+    if (r.amountIgnored) amountIgnored.push(rowNumber);
+  }
+
+  const plan = async (tx: Tx) => {
+    const codes = [...new Set(valid.map((r) => r.expressCode).filter(Boolean))] as string[];
+    const taxIds = [...new Set(valid.map((r) => r.taxId).filter(Boolean))] as string[];
+    const byCode = new Map<string, string>();
+    for (const c of chunks(codes)) {
+      for (const x of await tx.customerExpressCode.findMany({ where: { companyId, code: { in: c } }, select: { code: true, customerId: true } })) byCode.set(x.code, x.customerId);
+    }
+    const byIdentity = new Map<string, string>();
+    for (const c of chunks(taxIds)) {
+      for (const x of await tx.customer.findMany({ where: { taxId: { in: c } }, select: { id: true, taxId: true, branchCode: true } })) {
+        byIdentity.set(identityKey(x.taxId, x.branchCode)!, x.id);
+      }
+    }
+    const m = matchLastSales(valid, byCode, byIdentity);
+    // compared with what this company's earlier files said (other companies are kept apart)
+    const current = new Map<string, Date>();
+    for (const c of chunks(m.matches.map((x) => x.customerId))) {
+      for (const x of await tx.customerExpressSale.findMany({ where: { companyId, customerId: { in: c } }, select: { customerId: true, lastSaleDate: true } })) current.set(x.customerId, x.lastSaleDate);
+    }
+    const newer = m.matches.filter((x) => { const cur = current.get(x.customerId); return !cur || cur <= x.lastSaleDate; });
+    return { ...m, newer, older: m.matches.length - newer.length };
+  };
+
+  const describe = (p: Awaited<ReturnType<typeof plan>>) => ({
+    summary: { rows: sheet.rows.length, create: 0, update: p.newer.length, conflict: p.older, error: errors.length + p.errors.length },
+    errors: [...errors, ...p.errors].sort((a, b) => a.row - b.row).slice(0, MAX_LISTED),
+    notFoundRows: p.notFound.slice(0, MAX_LISTED),
+    notFoundCount: p.notFound.length,
+    amountIgnoredRows: amountIgnored.slice(0, MAX_LISTED),
+  });
+
+  if (!apply) return describe(await plan(prisma));
+
+  const result = await prisma.$transaction(async (tx) => {
+    const p = await plan(tx);
+    const ids: string[] = [], dates: string[] = [], amounts: (string | null)[] = [];
+    for (const x of [...p.newer].sort((a, b) => (a.customerId < b.customerId ? -1 : 1))) {
+      ids.push(x.customerId);
+      dates.push(x.lastSaleDate.toISOString().slice(0, 10));
+      amounts.push(x.sales12mSatang === null ? null : String(x.sales12mSatang));
+    }
+    let reactivated = 0;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const [cIds, cDates, cAmounts] = [ids.slice(i, i + CHUNK), dates.slice(i, i + CHUNK), amounts.slice(i, i + CHUNK)];
+      // customers locked in id order first, like transfers (no lock-order deadlock)
+      await tx.$queryRaw`SELECT id FROM customer WHERE id = ANY(${cIds}::text[]) ORDER BY id FOR UPDATE`;
+      // This company's figures: the amount changes only with a newer sale date (or when none was
+      // stored), so the same last sale repeated in later files keeps the figure from that time.
+      await tx.$executeRaw`
+        INSERT INTO customer_express_sale ("customerId", "companyId", "lastSaleDate", "sales12mSatang", "updatedAt")
+        SELECT v.id, ${companyId}, v.d, v.amt, now() FROM unnest(${cIds}::text[], ${cDates}::date[], ${cAmounts}::bigint[]) AS v(id, d, amt)
+        ON CONFLICT ("customerId", "companyId") DO UPDATE SET
+          "sales12mSatang" = CASE
+            WHEN EXCLUDED."lastSaleDate" > customer_express_sale."lastSaleDate" THEN COALESCE(EXCLUDED."sales12mSatang", customer_express_sale."sales12mSatang")
+            ELSE COALESCE(customer_express_sale."sales12mSatang", EXCLUDED."sales12mSatang") END,
+          "lastSaleDate" = GREATEST(customer_express_sale."lastSaleDate", EXCLUDED."lastSaleDate"),
+          "updatedAt" = now()`;
+      // Customer totals: latest date over companies, sum of the 12-month figures.
+      await tx.$executeRaw`
+        UPDATE customer c
+           SET "expressLastSaleDate" = a.d,
+               "expressSales12mSatang" = a.amt,
+               "lastPurchaseDate" = GREATEST(COALESCE(c."lastPurchaseDate", a.d), a.d)
+          FROM (SELECT "customerId", max("lastSaleDate") AS d,
+                       -- only companies that sold within the 12 months up to the latest sale
+                       sum(CASE WHEN "lastSaleDate" > (mx - interval '12 months')::date THEN "sales12mSatang" END)::bigint AS amt
+                  FROM (SELECT *, max("lastSaleDate") OVER (PARTITION BY "customerId") AS mx
+                          FROM customer_express_sale WHERE "customerId" = ANY(${cIds}::text[])) s
+                 GROUP BY "customerId") a
+         WHERE c.id = a."customerId"`;
+      // Lost customers with a sale in this file after they were marked lost are customers again.
+      const back = await tx.$queryRaw<{ id: string }[]>`
+        UPDATE customer c SET status = 'ACTIVE', "lostReason" = NULL, "lostNote" = NULL, "lostAt" = NULL
+          FROM unnest(${cIds}::text[], ${cDates}::date[]) AS v(id, d)
+         WHERE c.id = v.id AND c.status = 'LOST' AND v.d > (c."lostAt" AT TIME ZONE 'Asia/Bangkok')::date
+        RETURNING c.id`;
+      for (const b of back) {
+        await writeAudit({ actorId: admin.id, action: "customer.reactivate", entityType: "customer", entityId: b.id, before: { status: "LOST" }, after: { status: "ACTIVE", source: "import.last_sales" } }, tx);
+      }
+      reactivated += back.length;
+    }
+    const batch = await tx.importBatch.create({
+      data: {
+        kind: "LAST_SALES", companyId, fileName: file.name.slice(0, 200), rowCount: sheet.rows.length,
+        createdCount: 0, updatedCount: p.newer.length, conflictCount: p.older, skippedCount: errors.length + p.errors.length + p.notFound.length, createdById: admin.id,
+      },
+    });
+    await writeAudit({
+      actorId: admin.id, action: "import.last_sales", entityType: "import_batch", entityId: batch.id,
+      after: { companyId, fileName: file.name, rows: sheet.rows.length, updated: p.newer.length, older: p.older, notFound: p.notFound.length, reactivated },
+    }, tx);
+    return p;
+  }, TX_OPTIONS);
+  revalidatePath("/");
+  revalidatePath("/customers");
+  revalidatePath("/customers/dormant");
+  return { ...describe(result), applied: true };
 }

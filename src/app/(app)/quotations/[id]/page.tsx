@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { prisma } from "@/server/db";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { AlertTriangleIcon, CalendarClockIcon, CheckCircle2Icon, ClockIcon, FileDownIcon, TrophyIcon, XCircleIcon } from "lucide-react";
 import { canCloseQuotation, canRecordFollowup, dateOnlyString, today } from "@/server/domain/followups";
@@ -61,6 +62,10 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
   const todayStr = dateOnlyString(today());
   const day = (d: Date) => format.dateTime(d, { dateStyle: "medium", timeZone: "UTC" });
   const isOwner = q.ownerId === user.id && user.roles.includes("sales");
+  // Moved with a customer transfer: the original creator ("ผู้สร้างเดิม") is kept and shown (M6).
+  const creator = q.createdById !== q.ownerId
+    ? await prisma.user.findUnique({ where: { id: q.createdById }, select: { name: true } })
+    : null;
   const pending = history.find((h) => h.status === "PENDING") ?? null;
   const lastDecision = history.find((h) => h.status !== "PENDING" && h.status !== "WITHDRAWN") ?? null;
   const approvalActions = {
@@ -93,6 +98,12 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
         <StatusBadge status={q.status} />
         <span className="text-muted-foreground">{q.company.code} · {q.company.nameTh}</span>
         {q.showMin && <span className="text-muted-foreground">· {t("quotations.owner")}: {q.owner.name}</span>}
+        {creator && (
+          <span className="text-muted-foreground">
+            · {t("dormant.originalCreator", { name: creator.name })}
+            {q.ownerSince ? ` · ${t("dormant.ownerSince", { date: format.dateTime(q.ownerSince, { dateStyle: "medium" }) })}` : ""}
+          </span>
+        )}
       </div>
 
       {q.requiresApproval && q.status === "DRAFT" && (

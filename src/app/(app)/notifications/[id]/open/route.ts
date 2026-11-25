@@ -13,6 +13,20 @@ export async function GET(req: Request, ctx: RouteContext<"/notifications/[id]/o
   if (!n.readAt) await prisma.notification.update({ where: { id: n.id }, data: { readAt: new Date() } });
   const approvalId = (n.data as { approvalId?: unknown })?.approvalId;
   const toApproval = (n.type === "APPROVAL_REQUESTED" || n.type === "APPROVAL_REMINDER") && typeof approvalId === "string" && /^[a-z0-9]+$/.test(approvalId);
-  const target = toApproval ? `/approvals/${approvalId}` : n.quotationId ? `/quotations/${encodeURIComponent(n.quotationId)}` : "/notifications";
+  const target = toApproval
+    ? `/approvals/${approvalId}`
+    : n.type === "TRANSFER_REQUESTED"
+      ? "/customers/transfers"
+      : n.quotationId
+        ? `/quotations/${encodeURIComponent(n.quotationId)}`
+        : n.customerId
+          ? `/customers/${encodeURIComponent(n.customerId)}`
+          : n.type === "CUSTOMER_DORMANT"
+            ? "/customers/dormant"
+            : n.type === "QUOTATIONS_TRANSFERRED_IN"
+              ? "/quotations"
+              : n.type === "CUSTOMER_TRANSFERRED_IN" || n.type === "CUSTOMER_TRANSFERRED_OUT"
+              ? "/customers"
+              : "/notifications";
   return Response.redirect(new URL(target, base), 303);
 }

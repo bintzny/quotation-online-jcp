@@ -8,6 +8,9 @@ import { updateUserAction } from "@/server/actions/users";
 import { PageHeader } from "@/components/page-header";
 import { UserForm } from "../user-form";
 import { UserAccountActions } from "./account-actions";
+import { TransferAll } from "./transfer-all";
+import { listAssignableOwners } from "@/server/services/customers";
+import { OPEN_QUOTATION_STATUSES } from "@/server/domain/dormant";
 
 export default async function EditUserPage({ params }: PageProps<"/admin/users/[id]">) {
   const admin = await requireRole(["admin"]);
@@ -21,6 +24,11 @@ export default async function EditUserPage({ params }: PageProps<"/admin/users/[
     prisma.company.findMany({ orderBy: { code: "asc" }, select: { id: true, code: true, nameTh: true } }),
   ]);
   if (!user) notFound();
+  const [customerCount, openQuotations, owners] = await Promise.all([
+    prisma.customer.count({ where: { ownerId: user.id } }),
+    prisma.quotation.count({ where: { ownerId: user.id, status: { in: [...OPEN_QUOTATION_STATUSES] } } }),
+    listAssignableOwners(),
+  ]);
 
   const locked = isLocked({ failedLoginCount: user.failedLoginCount, lockedUntil: user.lockedUntil }, new Date());
 
@@ -42,6 +50,9 @@ export default async function EditUserPage({ params }: PageProps<"/admin/users/[
       />
       {user.id !== admin.id && (
         <UserAccountActions userId={user.id} banned={!!user.banned} locked={locked} isSelf={false} />
+      )}
+      {(customerCount > 0 || openQuotations > 0) && (
+        <TransferAll userId={user.id} customers={customerCount} openQuotations={openQuotations} owners={owners.map((o) => ({ id: o.id, name: o.name }))} />
       )}
     </div>
   );

@@ -1,10 +1,11 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 
-type Entry = { id: string; contactedOn: Date; channel: string; detail: string; nextDate: Date | null; createdAt: Date; user: { name: string } };
+type Entry = { id: string; contactedOn: Date; channel: string; detail: string; nextDate: Date | null; outcome?: string | null; createdAt: Date; user: { name: string } };
 
 /** A follow-up log, newest first. Dates are calendar dates (shown in UTC so the day never shifts). */
 export async function FollowupLog({ entries }: { entries: Entry[] }) {
   const t = await getTranslations("followups");
+  const td = await getTranslations("dormant");
   const format = await getFormatter();
   const day = (d: Date) => format.dateTime(d, { dateStyle: "medium", timeZone: "UTC" });
   if (entries.length === 0) return <p className="text-sm text-muted-foreground">{t("empty")}</p>;
@@ -16,6 +17,7 @@ export async function FollowupLog({ entries }: { entries: Entry[] }) {
             <span className="font-medium">{day(f.contactedOn)} · {t(`channels.${f.channel}`)}</span>
             <span className="text-xs text-muted-foreground">{t("by", { name: f.user.name })}</span>
           </div>
+          {f.outcome && <p className="w-fit rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{td(`outcomes.${f.outcome}`)}</p>}
           <p className="whitespace-pre-line break-words">{f.detail}</p>
           {f.nextDate && <p className="text-xs text-muted-foreground">{t("next", { date: day(f.nextDate) })}</p>}
         </li>

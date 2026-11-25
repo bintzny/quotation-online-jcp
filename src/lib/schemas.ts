@@ -199,6 +199,28 @@ export const followupSchema = z.object({
   channel: z.enum(["PHONE", "LINE", "VISIT", "EMAIL", "OTHER"], { message: "required" }),
   detail: z.string().trim().min(1, "required").max(2000, "tooLong"),
   nextDate: z.preprocess(emptyToUndefined, dateOnly.optional()),
+  // customer-level contact with an inactive customer (M6)
+  outcome: z.preprocess(emptyToUndefined, z.enum(["STILL_CUSTOMER", "CLOSED_BUSINESS", "COMPETITOR", "OTHER"]).optional()),
+});
+
+// ── Inactive customers and transfers (M6) ──
+
+export const transferRequestSchema = z.object({
+  reason: z.string().trim().min(1, "required").max(500, "tooLong"),
+});
+
+export const transferDecisionSchema = z.object({
+  decision: z.enum(["approve", "reject"], { message: "required" }),
+  note: optionalText(500),
+});
+
+export const transferSchema = z.object({
+  toUserId: z.string().trim().min(1, "required").max(100),
+  note: optionalText(500),
+});
+
+export const dormantMonthsSchema = z.object({
+  months: z.coerce.number({ message: "dormantMonths" }).int("dormantMonths").min(1, "dormantMonths").max(36, "dormantMonths"),
 });
 
 export const wonSchema = z.object({

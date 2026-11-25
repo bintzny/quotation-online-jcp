@@ -14,7 +14,19 @@ export type NotificationKind =
   | "APPROVAL_REQUESTED" | "APPROVAL_APPROVED" | "APPROVAL_REJECTED" | "APPROVAL_COUNTERED" | "APPROVAL_WITHDRAWN" | "APPROVAL_REMINDER"
   | "QUOTATION_EXPIRED" | "FOLLOWUP_STALE";
 
+export type CustomerNotificationKind =
+  | "CUSTOMER_DORMANT" | "CUSTOMER_TRANSFERRED_IN" | "CUSTOMER_TRANSFERRED_OUT"
+  | "TRANSFER_REQUESTED" | "TRANSFER_APPROVED" | "TRANSFER_REJECTED" | "QUOTATIONS_TRANSFERRED_IN";
+
 export type NotificationData = { number: string; customer: string; actor?: string; approvalId?: string };
+/** count > 1: one bell for several customers (customerId is then null and the bell opens a list). */
+export type CustomerNotificationData = { customer: string; actor?: string; count?: number; requestId?: string };
+
+export async function notifyCustomer(tx: Tx, userIds: string[], type: CustomerNotificationKind, customerId: string | null, data: CustomerNotificationData) {
+  const unique = [...new Set(userIds)];
+  if (unique.length === 0) return;
+  await tx.notification.createMany({ data: unique.map((userId) => ({ userId, type, customerId, data })) });
+}
 
 export async function notify(tx: Tx, userIds: string[], type: NotificationKind, quotationId: string, data: NotificationData) {
   const unique = [...new Set(userIds)];

@@ -84,12 +84,16 @@ export async function listCustomers(
 export async function getCustomerForViewer(viewer: Viewer, id: string) {
   const base = await prisma.customer.findUnique({
     where: { id },
-    select: { id: true, name: true, branchCode: true, branchName: true, status: true, ownerId: true, owner: { select: { name: true } } },
+    select: {
+      id: true, name: true, branchCode: true, branchName: true, status: true, ownerId: true, lastPurchaseDate: true, createdAt: true,
+      owner: { select: { name: true, banned: true } },
+    },
   });
   if (!base) return null;
   const notice = ownershipNotice(viewer, base);
   if (!canViewCustomer(viewer, base)) {
-    return { access: "limited" as const, customer: { ...base, ownerName: base.owner?.name ?? null }, notice };
+    // Only what the notice needs; the purchase date itself is not passed on (the page derives "inactive").
+    return { access: "limited" as const, customer: { ...base, ownerName: base.owner?.name ?? null, ownerActive: !base.owner?.banned }, notice };
   }
   const full = await prisma.customer.findUniqueOrThrow({
     where: { id },

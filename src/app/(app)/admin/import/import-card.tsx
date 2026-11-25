@@ -15,13 +15,17 @@ export function ImportCard({
   templateHref,
   action,
   companies,
+  variant = "default",
 }: {
   title: string;
   hint: string;
   templateHref: string;
   action: (prev: ImportResult, formData: FormData) => Promise<ImportResult>;
   companies?: { id: string; label: string }[];
+  /** lastSales: the Express last-sale file (updates only; rows without a customer are listed). */
+  variant?: "default" | "lastSales";
 }) {
+  const lastSales = variant === "lastSales";
   const t = useTranslations("imports");
   const tc = useTranslations("common");
   const tv = useTranslations("validation");
@@ -95,16 +99,28 @@ export function ImportCard({
           <div className="grid gap-3 rounded-lg border p-3 text-sm" role="status">
             {state.applied ? (
               <p className="font-medium text-green-700">
-                {t("done", { created: state.summary.create, updated: state.summary.update, conflicts: state.summary.conflict })}
+                {lastSales
+                  ? t("lastSalesDone", { updated: state.summary.update, older: state.summary.conflict })
+                  : t("done", { created: state.summary.create, updated: state.summary.update, conflicts: state.summary.conflict })}
               </p>
             ) : (
               <p className="font-medium">{t("previewTitle")}</p>
             )}
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-5">
               <div><dt className="text-muted-foreground">{t("rows")}</dt><dd className="text-lg font-semibold">{state.summary.rows}</dd></div>
-              <div><dt className="text-muted-foreground">{t("willCreate")}</dt><dd className="text-lg font-semibold">{state.summary.create}</dd></div>
-              <div><dt className="text-muted-foreground">{t("willUpdate")}</dt><dd className="text-lg font-semibold">{state.summary.update}</dd></div>
-              {companies && <div><dt className="text-muted-foreground">{t("conflicts")}</dt><dd className="text-lg font-semibold">{state.summary.conflict}</dd></div>}
+              {lastSales ? (
+                <>
+                  <div><dt className="text-muted-foreground">{t("lastSalesUpdate")}</dt><dd className="text-lg font-semibold">{state.summary.update}</dd></div>
+                  <div><dt className="text-muted-foreground">{t("lastSalesOlder")}</dt><dd className="text-lg font-semibold">{state.summary.conflict}</dd></div>
+                  <div><dt className="text-muted-foreground">{t("lastSalesNotFound")}</dt><dd className="text-lg font-semibold">{state.notFoundCount ?? 0}</dd></div>
+                </>
+              ) : (
+                <>
+                  <div><dt className="text-muted-foreground">{t("willCreate")}</dt><dd className="text-lg font-semibold">{state.summary.create}</dd></div>
+                  <div><dt className="text-muted-foreground">{t("willUpdate")}</dt><dd className="text-lg font-semibold">{state.summary.update}</dd></div>
+                  {companies && <div><dt className="text-muted-foreground">{t("conflicts")}</dt><dd className="text-lg font-semibold">{state.summary.conflict}</dd></div>}
+                </>
+              )}
               <div><dt className="text-muted-foreground">{t("errors")}</dt><dd className="text-lg font-semibold text-destructive">{state.summary.error}</dd></div>
             </dl>
 
@@ -154,6 +170,12 @@ export function ImportCard({
                   ))}
                 </ul>
               </div>
+            )}
+            {state.notFoundRows && state.notFoundRows.length > 0 && (
+              <p className="text-amber-700">{t("lastSalesNotFoundRows")}: {t("row")} {state.notFoundRows.join(", ")}{(state.notFoundCount ?? 0) > state.notFoundRows.length ? " …" : ""}</p>
+            )}
+            {state.amountIgnoredRows && state.amountIgnoredRows.length > 0 && (
+              <p className="text-amber-700">{t("lastSalesAmountIgnored")}: {t("row")} {state.amountIgnoredRows.join(", ")}</p>
             )}
             {state.noIdentityRows && state.noIdentityRows.length > 0 && (
               <p className="text-amber-700">{t("noIdentity")}: {t("row")} {state.noIdentityRows.join(", ")}</p>
