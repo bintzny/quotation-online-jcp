@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/server/db";
+import { clientIp } from "@/server/domain/client-ip";
 
 type AuditEntry = {
   actorId: string | null;
@@ -23,7 +24,7 @@ function toJson(value: unknown): Prisma.InputJsonValue | undefined {
 export async function writeAuditMany(entries: AuditEntry[], tx: Tx = prisma): Promise<void> {
   if (entries.length === 0) return;
   const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+  const ip = clientIp((n) => h.get(n));
   for (let i = 0; i < entries.length; i += 1000) {
     await tx.auditLog.createMany({
       data: entries.slice(i, i + 1000).map((e) => ({
@@ -37,7 +38,7 @@ export async function writeAuditMany(entries: AuditEntry[], tx: Tx = prisma): Pr
 /** Record who did what. Pass a transaction client to keep the log in the same transaction. */
 export async function writeAudit(entry: AuditEntry, tx: Tx = prisma): Promise<void> {
   const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+  const ip = clientIp((n) => h.get(n));
   await tx.auditLog.create({
     data: {
       actorId: entry.actorId,

@@ -1,6 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { isSafeStorageKey } from "@/server/domain/files";
 
@@ -55,5 +56,15 @@ export async function deleteObject(key: string | null | undefined): Promise<void
     await rm(/*turbopackIgnore: true*/ fullPath(key), { force: true });
   } catch {
     // an unsafe or already-removed key: nothing to delete
+  }
+}
+
+/** Health check: the store exists and this process may write to it (no file is written). */
+export async function storageWritable(): Promise<boolean> {
+  try {
+    await access(/*turbopackIgnore: true*/ root(), constants.W_OK);
+    return true;
+  } catch {
+    return false;
   }
 }

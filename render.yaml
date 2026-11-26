@@ -1,0 +1,91 @@
+# Render Blueprint (docs/deploy.md). Creates the database, the web service and two cron jobs.
+# Render shows every resource and its price before anything is created; check the plans there.
+# Values marked "sync: false" are asked for once, when the Blueprint is first applied.
+
+databases:
+  - name: quotation-db
+    databaseName: quotation
+    user: quotation
+    region: singapore
+    plan: 0.1c-256mb          # smallest paid plan (has backups); raise later in the dashboard if needed
+    postgresMajorVersion: "17"
+    ipAllowList: []           # no connections from the internet; only services in this workspace
+
+services:
+  - type: web
+    name: quotation-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore
+    plan: 1c-2g               # "Standard": 2 GB for Chromium (PDF) next to the app
+    numInstances: 1           # a service with a disk runs one instance
+    healthCheckPath: /api/health
+    preDeployCommand: /usr/local/bin/migrate.sh
+    autoDeployTrigger: "off"  # deploy master by hand after checking the changes
+    disk:
+      name: files
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quotation-db
+          property: connectionString
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: STORAGE_DIR
+        value: /var/data/storage
+      - key: APP_URL              # e.g. https://quotation.example.co.th (no trailing slash)
+        sync: false
+      - key: BETTER_AUTH_URL      # same as APP_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM            # e.g. "Quotation JCP" <no-reply@example.co.th>
+        sync: false
+      - key: SEED_ADMIN_EMAIL     # first administrator, created once with the seed (docs/deploy.md)
+        sync: false
+      # CLIENT_IP_HEADER is added by hand after the check in docs/deploy.md ("ตรวจ IP ผู้ใช้").
+
+  # The cron jobs only call the web service; they need no database or disk.
+  - type: cron
+    name: quotation-cron-approvals
+    runtime: node
+    region: singapore
+    schedule: "*/15 * * * *"    # UTC; every 15 minutes
+    autoDeployTrigger: "off"
+    buildCommand: "true"
+    startCommand: node deploy/cron.mjs approval-reminders
+    envVars:
+      - key: APP_URL
+        fromService:
+          name: quotation-web
+          type: web
+          envVarKey: APP_URL
+      - key: CRON_SECRET
+        fromService:
+          name: quotation-web
+          type: web
+          envVarKey: CRON_SECRET
+
+  - type: cron
+    name: quotation-cron-daily
+    runtime: node
+    region: singapore
+    schedule: "5 * * * *"       # UTC; every hour at :05 (covers just after midnight Bangkok and Monday 08:00+)
+    autoDeployTrigger: "off"
+    buildCommand: "true"
+    startCommand: node deploy/cron.mjs daily
+    envVars:
+      - key: APP_URL
+        fromService:
+          name: quotation-web
+          type: web
+          envVarKey: APP_URL
+      - key: CRON_SECRET
+        fromService:
+          name: quotation-web
+          type: web
+          envVarKey: CRON_SECRET

@@ -2,7 +2,7 @@
 
 อ้างอิงความต้องการ: [requirements.md](requirements.md)
 
-- สถานะ: **ยืนยัน tech stack แล้ว** (24 พ.ย. 2026) — **M0–M7 เสร็จแล้ว** (M7 เสร็จ 25 พ.ย. 2026) และปรับดีไซน์ทั้งระบบแล้ว (25 พ.ย. 2026, ดู 0.8)
+- สถานะ: **ยืนยัน tech stack แล้ว** (24 พ.ย. 2026) — **M0–M7 เสร็จแล้ว** (M7 เสร็จ 25 พ.ย. 2026) ปรับดีไซน์ทั้งระบบแล้ว (25 พ.ย. 2026, ดู 0.8) และ **M8 ส่วนที่ทำในเครื่องเสร็จแล้ว** (26 พ.ย. 2026, ดู 0.9) รอขึ้น Render จริง
 - หมายเหตุ: ไม่ใช้โค้ดร่วมกับ IT ASSET JCP
 
 ## 0. การตัดสินใจระหว่างทำ M0
@@ -312,6 +312,28 @@
 - **`MAIL_FROM`**: ต้องตั้งเป็นผู้ส่งของอีเมลระบบ (ลืมรหัสผ่าน แจ้งการอนุมัติ) เช่น `"Quotation JCP" <no-reply@โดเมน>` และ `APP_URL` เป็นโดเมนจริง เพราะลิงก์ในอีเมลใช้ค่านี้
 - **โลโก้ JCP ต้นฉบับ**: แทนสัญลักษณ์ชั่วคราวใน `components/brand-mark.tsx` ด้วยไฟล์จริง (SVG หรือ PNG พื้นโปร่งใส) และใส่ภาพหน้าจอดีไซน์ใหม่ในคู่มือผู้ใช้
 - **วันหยุดนักขัตฤกษ์**: ถ้าต้องการให้การเตือนไม่นับวันหยุด ให้เพิ่มรายการวันหยุดใน `business-hours.ts` หรือหน้าตั้งค่า
+
+## 0.9 การตัดสินใจระหว่างทำ M8 (ขึ้นระบบจริง)
+
+ขั้นตอนขึ้นระบบทั้งหมดอยู่ใน [deploy.md](deploy.md)
+
+- **ผู้ใช้เลือก (26 พ.ย. 2026)**: ไฟล์เก็บบน Render Persistent Disk (ไม่ใช้ R2), เว็บขนาด Standard 1 CPU / 2 GB, สำรองข้อมูลด้วยระบบของ Render พร้อมซ้อมกู้คืนเดือนละครั้ง, บริษัทนำร่องและโดเมนแจ้งภายหลัง จึงทำส่วนในเครื่องก่อน
+- **ผลของการใช้ดิสก์**: รันได้ 1 instance และระหว่าง deploy ระบบหยุดชั่วครู่ (Render หยุดเวอร์ชันเก่าก่อน) จึงปิด auto deploy และ deploy นอกเวลาทำงาน
+- **Docker image** (`Dockerfile`):
+  - 3 stage บน `node:24-bookworm-slim` ติดตั้ง openssl ตั้งแต่ stage ติดตั้ง dependency เพื่อให้ Prisma ได้ engine รุ่น OpenSSL 3 ตรงกับตอนรัน
+  - stage สุดท้ายมี Chromium (+ ฟอนต์ไทยสำรอง), แอปแบบ standalone ที่ `/app` และเครื่องมือ migration/seed/ตรวจฐานข้อมูลที่ `/opt/tools`
+  - `.dockerignore` กัน `.env*`, `.dev-credentials.txt`, `storage/` ไม่ให้เข้า image (Next คัดลอก `.env` เข้า `.next/standalone` ถ้ามีอยู่ตอน build)
+  - `deploy/entrypoint.sh` เริ่มเป็น root เพื่อมอบโฟลเดอร์บนดิสก์ (Render mount เป็นของ root) ให้ user `node` แล้วลดสิทธิ์ด้วย `setpriv` และตั้ง `HOME` ใหม่ Chromium ยังใช้ `--no-sandbox` (หน้าที่พิมพ์ปิด JavaScript และ network อยู่แล้ว)
+- **Render Blueprint** (`render.yaml`): เว็บ Docker + ดิสก์ 5 GB ที่ `/var/data`, PostgreSQL 17 ปิดการเชื่อมต่อจากภายนอก, region Singapore, pre-deploy รัน `prisma migrate deploy`, cron 2 งานเป็น Node ธรรมดาที่เรียก `deploy/cron.mjs` (อ่าน secret จาก env ไม่อยู่ในบรรทัดคำสั่ง) ค่า `APP_URL` / `CRON_SECRET` ของ cron อ้างจากเว็บด้วย `fromService` จึงต้อง Blueprint Sync หลังเปลี่ยนค่า
+- **ไม่ยอมเริ่มทำงานเมื่อค่าไม่ครบ** (`src/server/startup-check.ts` ผ่าน `src/instrumentation.ts`): ตรวจ `DATABASE_URL`, secret ยาว ≥ 32, `APP_URL`/`BETTER_AUTH_URL` เป็น https โดเมนเดียวกัน, `STORAGE_DIR` เป็น path เต็ม (บน Render ต้องอยู่ใต้ `/var/data/`), Resend, `MAIL_FROM`, `CRON_SECRET` แล้ว `process.exit(1)` เพราะการ throw ใน `register` ทำให้ Next ยังรับคำขอแต่ตอบ 500 ทุกหน้า ใช้ `ALLOW_INCOMPLETE_ENV=1` ได้เฉพาะทดสอบในเครื่อง
+- **IP ผู้ใช้** (`src/server/domain/client-ip.ts`): เอกสาร Render ไม่ระบุ header ที่เชื่อถือได้ จึงตั้งได้ด้วย `CLIENT_IP_HEADER` (header เดี่ยวที่ proxy เขียนทับ ใช้ทั้ง rate limit ของ Better Auth และ audit log) หรือ `TRUSTED_PROXY_HOPS` (นับ `X-Forwarded-For` จากขวา ใช้กับ audit log เท่านั้น) ค่าเริ่มต้นไม่เชื่อค่าซ้ายสุดที่ผู้ใช้ปลอมได้อีกต่อไป ตรวจบนระบบจริงด้วย `POST /api/ops/ip-check` (ต้องใช้ `CRON_SECRET`) ก่อนตั้ง `CLIENT_IP_HEADER` rate limit การเข้าสู่ระบบนับรวมทุกคน
+- **`/api/health`**: สาธารณะ ตอบเฉพาะ ok/ไม่ ok ของฐานข้อมูล เขตเวลา session และสิทธิ์เขียนดิสก์ (ไม่เขียนไฟล์) Render ใช้เป็น health check เขตเวลาระดับฐานข้อมูลตรวจด้วย `deploy/db-check.mjs` ใน Shell ของเว็บ (Render Postgres ไม่มี Shell)
+- **Security headers** (`next.config.ts`): `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, CSP เฉพาะ `frame-ancestors / base-uri / form-action / object-src` (ไม่จำกัด script เพราะต้องใช้ nonce กับ Next), HSTS 1 ปีใน production (ไม่ใส่ includeSubDomains), ปิด `X-Powered-By` ตรวจแล้วว่า PDF แบบ inline และ server action ยังทำงาน
+- **ตรวจ dependency** (`npm audit --omit=dev`): เหลือ moderate/high ใน Prisma CLI (effect), shadcn CLI (ts-morph, minimatch) ซึ่งใช้ตอนพัฒนา/migration ไม่รับข้อมูลจากผู้ใช้ และ exceljs → uuid ซึ่งช่องโหว่อยู่ใน v3/v5/v6 แบบส่ง buffer แต่ exceljs ใช้เฉพาะ `v4()` จึงไม่กระทบ ไม่รัน `npm audit fix --force` เพราะจะลดรุ่น exceljs/prisma
+- **ทดสอบ**: unit test 203 ข้อ, `tests/smoke/m8-security.mjs` 45/45 บน dev server และ 44/44 บน production build (`next start` แบบ standalone), smoke M3/M4/M7 ผ่านซ้ำ, ทดสอบว่า standalone ไม่ยอมเริ่มเมื่อค่าไม่ครบ
+- **ผลตรวจ BintzIT รอบ M8**: สูง 2 ข้อ (Prisma engine ไม่ตรงรุ่น OpenSSL, คำสั่ง seed ในคู่มือหา `tsx` ไม่เจอ), กลาง 5 ข้อ (HOME หลังลดสิทธิ์, `TRUSTED_PROXY_HOPS` ไม่มีผลกับ rate limit, คู่มือเรื่องระบบหยุดเมื่อค่าผิด, ไม่มี Shell ของฐานข้อมูล, URL onrender.com อาจไม่ตรงชื่อ), ต่ำ 8 ข้อ แก้ครบทุกข้อ
+- **ยังไม่ได้ทดสอบ**: build และรัน Docker image จริง (เครื่องพัฒนาไม่ได้เปิด Docker) ต้องทำก่อน deploy ครั้งแรก: build image, ตรวจว่ามี `schema-engine-debian-openssl-3.0.x`, รัน migration, สร้าง PDF และเขียนไฟล์ลงดิสก์ในฐานะ user `node`
+- **เรื่องที่ยังเปิดอยู่**: ข้อความ "บัญชีถูกล็อก" ยังบอกว่าอีเมลมีอยู่จริง (ยอมรับได้สำหรับระบบภายใน), โลโก้ JCP ต้นฉบับ, วันหยุดนักขัตฤกษ์, ข้อมูลในเครื่องพัฒนาที่บันทึกก่อนแก้เขตเวลายังคลาดเคลื่อน 7 ชั่วโมง (ไม่กระทบ production ที่เริ่มจากฐานข้อมูลใหม่)
 
 ## 1. Tech stack
 

@@ -1,0 +1,21 @@
+# Never send secrets, local data or build output into the image.
+.env*
+!.env.example
+.dev-credentials.txt
+storage
+node_modules
+.next
+src/generated
+tests
+coverage
+*.tsbuildinfo
+next-env.d.ts
+.git
+.claude
+.agents
+.windsurf
+docs
+README.md
+Dockerfile
+.dockerignore
+render.yaml

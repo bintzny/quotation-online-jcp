@@ -9,6 +9,9 @@ import { prisma } from "@/server/db";
 import { sendMail } from "@/server/mail";
 import { LOCK_MINUTES, MAX_FAILED_LOGINS } from "@/server/domain/lockout";
 import { isBlockedOverHttp } from "@/server/domain/auth-routes";
+import { ipConfig } from "@/server/domain/client-ip";
+
+const clientIpHeader = ipConfig().header;
 
 export const ACCOUNT_LOCKED = "ACCOUNT_LOCKED";
 
@@ -96,6 +99,10 @@ export const auth = betterAuth({
       lockedUntil: { type: "date", required: false, input: false, returned: false },
     },
   },
+
+  // Rate limits key on the client IP. Behind Render, set CLIENT_IP_HEADER once verified (docs/deploy.md);
+  // until then a forwarded list is not trusted and Better Auth falls back to a shared bucket.
+  ...(clientIpHeader ? { advanced: { ipAddress: { ipAddressHeaders: [clientIpHeader] } } } : {}),
 
   rateLimit: {
     enabled: true,
