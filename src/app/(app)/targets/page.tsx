@@ -66,7 +66,7 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
         </Link>
       </nav>
       {people.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{t("noSalespeople")}</p>
+        <p className="rounded-xl border border-dashed bg-card/60 px-4 py-8 text-center text-sm text-muted-foreground">{t("noSalespeople")}</p>
       ) : (
         <TargetsForm key={year} year={year} months={months} people={people} />
       )}

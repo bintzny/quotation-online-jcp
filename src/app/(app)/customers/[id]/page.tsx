@@ -65,7 +65,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
         <PageHeader title={c.name} backHref="/customers" backLabel={t("customers.title")} />
         <p className="rounded-lg border bg-muted/40 p-4 text-sm" role="status">{text}</p>
         {canAsk && (myRequest ? (
-          <div className="grid gap-2 rounded-lg border p-4 text-sm">
+          <div className="grid gap-2 rounded-lg border p-4 text-sm bg-card">
             <p>{t("dormant.requestPending", { date: format.dateTime(myRequest.createdAt, { dateStyle: "medium" }) })}</p>
             <CancelTransferRequest requestId={myRequest.id} />
           </div>
@@ -119,7 +119,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
       {notice && <p className="rounded-lg border bg-muted/40 p-4 text-sm" role="status">{notice}</p>}
 
       {c.status === "LOST" && (
-        <div className="grid gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40" role="status">
+        <div className="grid gap-3 rounded-lg border border-warning/30 bg-warning-soft p-4 text-sm" role="status">
           <p className="font-medium">
             {t("dormant.lostBanner", { reason: c.lostReason ? t(`dormant.lostReasons.${c.lostReason}`) : "-", date: c.lostAt ? format.dateTime(c.lostAt, { dateStyle: "medium" }) : "-" })}
           </p>
@@ -134,7 +134,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
       )}
 
       {dormant && showFollowups && (
-        <div className="grid gap-1 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40" role="status">
+        <div className="grid gap-1 rounded-lg border border-warning/30 bg-warning-soft p-4 text-sm" role="status">
           <p className="font-medium">
             {c.lastPurchaseDate
               ? t("dormant.banner", { months, date: day(c.lastPurchaseDate) })

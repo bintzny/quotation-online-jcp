@@ -42,7 +42,7 @@ export default async function EditCompanyPage({ params }: PageProps<"/admin/comp
           active: c.active,
         }}
       />
-      <div className="mt-8 rounded-xl border p-4">
+      <div className="mt-8 rounded-xl border p-4 bg-card">
         <ImageUpload
           label={t("files.companyLogo")}
           hint={t("files.logoHint")}

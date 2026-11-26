@@ -108,31 +108,31 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
       </div>
 
       {q.requiresApproval && q.status === "DRAFT" && (
-        <p className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200" role="status">
+        <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
           <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
           {t("quotations.needsApprovalDetail")}
         </p>
       )}
       {q.status === "PENDING_APPROVAL" && (
-        <p className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200" role="status">
+        <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
           <ClockIcon className="mt-0.5 size-4 shrink-0" />
           {t("approvals.pendingBanner")}
         </p>
       )}
       {q.status === "REJECTED" && lastDecision?.status === "REJECTED" && (
-        <p className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="status">
+        <p className="flex items-start gap-2 rounded-lg border border-destructive/25 bg-danger-soft p-3 text-sm text-destructive" role="status">
           <XCircleIcon className="mt-0.5 size-4 shrink-0" />
           <span>{t("approvals.rejectedBanner", { note: lastDecision.decisionNote ?? "" })}</span>
         </p>
       )}
       {q.status === "APPROVED" && (
-        <p className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200" role="status">
+        <p className="flex items-start gap-2 rounded-lg border border-success/30 bg-success-soft p-3 text-sm text-success-soft-foreground" role="status">
           <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
           {lastDecision?.status === "COUNTERED" ? t("approvals.counteredBanner") : t("approvals.approvedBanner")}
         </p>
       )}
       {q.status === "WON" && (
-        <div className="grid gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200" role="status">
+        <div className="grid gap-2 rounded-lg border border-success/30 bg-success-soft p-3 text-sm text-success-soft-foreground" role="status">
           <p className="flex items-start gap-2">
             <TrophyIcon className="mt-0.5 size-4 shrink-0" />
             <span>{t("followups.wonBanner", { po: q.poNumber ?? "", date: q.poDate ? day(q.poDate) : "" })}</span>
@@ -208,13 +208,13 @@ export default async function QuotationPage({ params, searchParams }: PageProps<
             </TableHeader>
             <TableBody>
               {q.items.map((it, i) => (
-                <TableRow key={it.id} className={it.approvalReason ? "bg-amber-50/70 dark:bg-amber-950/20" : undefined}>
+                <TableRow key={it.id} className={it.approvalReason ? "bg-warning-soft" : undefined}>
                   <TableCell>{i + 1}</TableCell>
                   <TableCell className="min-w-48 whitespace-normal">
                     <div>{it.name}</div>
                     {it.productCode && <div className="text-xs text-muted-foreground">{it.productCode}</div>}
                     {it.approvalReason && (
-                      <div className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">{t(`quotations.approvalReason.${it.approvalReason}`)}</div>
+                      <div className="mt-0.5 text-xs text-warning-soft-foreground">{t(`quotations.approvalReason.${it.approvalReason}`)}</div>
                     )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums whitespace-nowrap">{formatQuantity(it.quantityMilli)} {it.unit}</TableCell>

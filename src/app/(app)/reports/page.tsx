@@ -19,6 +19,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "../quotations/status-badge";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations("reports");
@@ -69,7 +70,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
         }
       />
 
-      <form method="get" className="mb-4 grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end" aria-label={t("filters")}>
+      <form method="get" className="mb-4 grid gap-3 rounded-xl border bg-card p-3 shadow-xs sm:p-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end" aria-label={t("filters")}>
         <label className="grid gap-1 text-xs text-muted-foreground">
           {t("basisLabel")}
           <NativeSelect name="basis" defaultValue={f.basis} className="lg:w-48">
@@ -128,7 +129,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
         </p>
       )}
       <p className="mb-3 text-xs text-muted-foreground">{t(`basisHelp.${f.basis}`)}{f.basis === "sent" && !all ? ` ${t("ownOnlyNote")}` : ""}</p>
-      {f.clipped && <p className="mb-3 text-sm text-amber-700 dark:text-amber-400" role="status">{t("rangeClipped", { from: day(f.fromDay) })}</p>}
+      {f.clipped && <p className="mb-3 text-sm text-warning" role="status">{t("rangeClipped", { from: day(f.fromDay) })}</p>}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Summary label={t("count")} value={format.number(data.count)} />
@@ -146,9 +147,9 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
       )}
 
       {data.rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+        <EmptyState>{t("empty")}</EmptyState>
       ) : (
-        <div className="overflow-x-auto rounded-xl border">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>
@@ -185,7 +186,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-0.5 rounded-xl border p-3">
+    <div className="grid gap-0.5 rounded-xl border p-3 bg-card">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-lg font-semibold tabular-nums">{value}</span>
     </div>

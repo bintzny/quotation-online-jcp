@@ -96,9 +96,9 @@ export function ImportCard({
         )}
 
         {state?.summary && (
-          <div className="grid gap-3 rounded-lg border p-3 text-sm" role="status">
+          <div className="grid gap-3 rounded-lg border p-3 text-sm bg-card" role="status">
             {state.applied ? (
-              <p className="font-medium text-green-700">
+              <p className="font-medium text-success">
                 {lastSales
                   ? t("lastSalesDone", { updated: state.summary.update, older: state.summary.conflict })
                   : t("done", { created: state.summary.create, updated: state.summary.update, conflicts: state.summary.conflict })}
@@ -147,7 +147,7 @@ export function ImportCard({
             )}
             {state.unknownSales && state.unknownSales.length > 0 && (
               <div>
-                <p className="text-amber-700">{t("unknownSales")}</p>
+                <p className="text-warning">{t("unknownSales")}</p>
                 <ul className="list-disc pl-5">
                   {state.unknownSales.map((u) => <li key={u.code}>{u.code} ({t("row")} {u.rows.join(", ")})</li>)}
                 </ul>
@@ -155,7 +155,7 @@ export function ImportCard({
             )}
             {state.conflicts && state.conflicts.length > 0 && (
               <div>
-                <p className="text-amber-700">{t("conflicts")}</p>
+                <p className="text-warning">{t("conflicts")}</p>
                 <ul className="list-disc pl-5">
                   {state.conflicts.map((c, i) => <li key={i}>{c.name}: {c.candidates.join(", ")}</li>)}
                 </ul>
@@ -163,7 +163,7 @@ export function ImportCard({
             )}
             {state.mismatches && state.mismatches.length > 0 && (
               <div>
-                <p className="text-amber-700">{t("mismatches")}</p>
+                <p className="text-warning">{t("mismatches")}</p>
                 <ul className="list-disc pl-5">
                   {state.mismatches.map((m, i) => (
                     <li key={i}>{t("mismatchLine", { name: m.name, owner: m.owner, code: m.salesCode, row: m.row })}</li>
@@ -172,13 +172,13 @@ export function ImportCard({
               </div>
             )}
             {state.notFoundRows && state.notFoundRows.length > 0 && (
-              <p className="text-amber-700">{t("lastSalesNotFoundRows")}: {t("row")} {state.notFoundRows.join(", ")}{(state.notFoundCount ?? 0) > state.notFoundRows.length ? " …" : ""}</p>
+              <p className="text-warning">{t("lastSalesNotFoundRows")}: {t("row")} {state.notFoundRows.join(", ")}{(state.notFoundCount ?? 0) > state.notFoundRows.length ? " …" : ""}</p>
             )}
             {state.amountIgnoredRows && state.amountIgnoredRows.length > 0 && (
-              <p className="text-amber-700">{t("lastSalesAmountIgnored")}: {t("row")} {state.amountIgnoredRows.join(", ")}</p>
+              <p className="text-warning">{t("lastSalesAmountIgnored")}: {t("row")} {state.amountIgnoredRows.join(", ")}</p>
             )}
             {state.noIdentityRows && state.noIdentityRows.length > 0 && (
-              <p className="text-amber-700">{t("noIdentity")}: {t("row")} {state.noIdentityRows.join(", ")}</p>
+              <p className="text-warning">{t("noIdentity")}: {t("row")} {state.noIdentityRows.join(", ")}</p>
             )}
             {state.errors?.length === 0 && !state.duplicates?.length && <p className="text-muted-foreground">{t("noErrors")}</p>}
           </div>

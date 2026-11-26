@@ -5,6 +5,7 @@ import { listNotifications } from "@/server/notifications";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
 import { MarkAllRead } from "./mark-all-read";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations();
@@ -22,7 +23,7 @@ export default async function NotificationsPage() {
     <div className="grid max-w-2xl gap-4">
       <PageHeader title={t("title")} actions={unread ? <MarkAllRead /> : undefined} />
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+        <EmptyState>{t("empty")}</EmptyState>
       ) : (
         <ul className="grid gap-2">
           {items.map((n) => {
@@ -33,7 +34,7 @@ export default async function NotificationsPage() {
                 <Link
                   href={`/notifications/${n.id}/open`}
                   prefetch={false}
-                  className={cn("grid gap-0.5 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50", !n.readAt && "border-primary/40 bg-primary/5")}
+                  className={cn("grid gap-0.5 rounded-lg border bg-card p-3 text-sm transition-colors hover:border-primary/30 hover:bg-accent/40", !n.readAt && "border-primary/30 bg-accent/60")}
                 >
                   <span className={cn(!n.readAt && "font-medium")}>
                     {t(many ? `types.${n.type}_MANY` : `types.${n.type}`, { number: d.number ?? "", customer: d.customer ?? "", actor: d.actor ?? "", count: d.count ?? 0 })}

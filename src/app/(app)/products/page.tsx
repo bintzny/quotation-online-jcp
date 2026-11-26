@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations();
@@ -45,7 +46,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
           </Link>
         ) : undefined}
       />
-      <form method="get" className="mb-4 grid gap-2 sm:flex sm:flex-wrap sm:items-center" role="search">
+      <form method="get" className="mb-4 grid gap-2 rounded-xl border bg-card p-3 shadow-xs sm:p-4 sm:flex sm:flex-wrap sm:items-center" role="search">
         <Input name="q" defaultValue={q} placeholder={t("products.searchPlaceholder")} aria-label={t("common.search")} className="sm:max-w-xs" maxLength={100} />
         <NativeSelect name="category" defaultValue={category ?? ""} aria-label={t("products.category")} className="sm:w-48">
           <option value="">{t("products.allCategories")}</option>
@@ -62,9 +63,9 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
       <p className="mb-2 text-xs text-muted-foreground">{t("common.resultCount", { count: total })}</p>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("products.noProducts")}</p>
+        <EmptyState>{t("products.noProducts")}</EmptyState>
       ) : (
-        <div className="rounded-xl border">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>

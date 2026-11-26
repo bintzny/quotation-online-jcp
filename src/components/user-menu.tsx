@@ -24,13 +24,16 @@ export function UserMenu({ name, email, roles }: { name: string; email: string; 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={buttonVariants({ variant: "ghost", size: "default", className: "gap-2" })}
+        className={buttonVariants({ variant: "ghost", size: "default", className: "h-11 gap-2.5 px-1.5 md:h-11 sm:pr-3" })}
         aria-label={t("profile")}
       >
-        <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+        <span className="flex size-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground ring-1 ring-primary/15">
           {initial}
         </span>
-        <span className="hidden max-w-40 truncate sm:inline">{name}</span>
+        <span className="hidden min-w-0 text-left leading-tight sm:grid">
+          <span className="max-w-44 truncate text-sm font-medium">{name}</span>
+          <span className="max-w-44 truncate text-xs font-normal text-muted-foreground">{roles.join(", ")}</span>
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>

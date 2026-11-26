@@ -88,7 +88,7 @@ export function SetupTwoFactor() {
 
   return (
     <div className="grid gap-4">
-      <p className="text-sm font-medium text-green-700">{t("twoFactorEnabled")}</p>
+      <p className="text-sm font-medium text-success">{t("twoFactorEnabled")}</p>
       <div className="grid gap-2">
         <p className="text-sm font-semibold">{t("backupCodesTitle")}</p>
         <p className="text-xs text-muted-foreground">{t("backupCodesHint")}</p>

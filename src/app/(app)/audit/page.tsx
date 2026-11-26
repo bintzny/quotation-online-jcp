@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { NativeSelect } from "@/components/form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations("audit");
@@ -69,7 +70,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/audit">) {
       <PageHeader title={t("title")} />
       <p className="-mt-4 mb-4 text-sm text-muted-foreground">{t("hint")}</p>
 
-      <form method="get" className="mb-4 grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end" aria-label={t("filters")}>
+      <form method="get" className="mb-4 grid gap-3 rounded-xl border bg-card p-3 shadow-xs sm:p-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end" aria-label={t("filters")}>
         <label className="grid gap-1 text-xs text-muted-foreground">
           {t("entityType")}
           <NativeSelect name="type" defaultValue={f.entityType ?? ""} className="lg:w-40">
@@ -110,7 +111,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/audit">) {
       )}
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+        <EmptyState>{t("empty")}</EmptyState>
       ) : (
         <ul className="grid gap-2">
           {rows.map((r) => {
@@ -121,7 +122,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/audit">) {
             const before = showDetails ? json(r.before) : null;
             const after = showDetails ? json(r.after) : null;
             return (
-              <li key={r.id} className="grid gap-1 rounded-lg border p-3 text-sm">
+              <li key={r.id} className="grid gap-1 rounded-lg border p-3 text-sm bg-card">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <span className="font-medium">{actionLabel(r.action)}</span>
                   <time className="text-xs text-muted-foreground tabular-nums" dateTime={r.createdAt.toISOString()}>

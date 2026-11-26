@@ -21,7 +21,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn("flex items-center gap-1 text-sm", className)} aria-label={t("language")}>
+    <div className={cn("inline-flex items-center gap-0.5 rounded-lg bg-muted p-0.5 text-sm", className)} aria-label={t("language")}>
       {(["th", "en"] as const).map((l) => (
         <button
           key={l}
@@ -30,8 +30,8 @@ export function LocaleSwitcher({ className }: { className?: string }) {
           onClick={() => choose(l)}
           aria-pressed={locale === l}
           className={cn(
-            "rounded-md px-3 py-2 transition-colors",
-            locale === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+            "min-h-9 rounded-md px-3 transition-colors",
+            locale === l ? "bg-card font-medium text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {l === "th" ? t("thai") : t("english")}

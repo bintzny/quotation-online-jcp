@@ -8,6 +8,7 @@ import { FlashToast } from "@/components/flash-toast";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations();
@@ -36,9 +37,9 @@ export default async function CompaniesPage({ searchParams }: PageProps<"/admin/
         }
       />
       {companies.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("companies.noCompanies")}</p>
+        <EmptyState>{t("companies.noCompanies")}</EmptyState>
       ) : (
-        <div className="rounded-xl border">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>

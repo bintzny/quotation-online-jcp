@@ -13,7 +13,7 @@ export function DormantMonthsForm({ months }: { months: number }) {
   const [state, action, busy] = useActionState(updateDormantMonthsAction, undefined);
   const err = useFieldError(state);
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-[12rem_auto] sm:items-end">
+    <form action={action} className="grid gap-3 sm:grid-cols-[12rem_auto] sm:items-end sm:justify-items-start">
       <Field label={t("settings.dormantMonths")} htmlFor="dormant-months" error={err("months")}>
         <Input id="dormant-months" name="months" type="number" inputMode="numeric" min={1} max={36} step={1} defaultValue={months} required />
       </Field>

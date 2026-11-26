@@ -38,7 +38,9 @@
     "add": "Add",
     "view": "View",
     "all": "All",
-    "resultCount": "{count} items"
+    "resultCount": "{count} items",
+    "brandTagline": "Packing Solution",
+    "notifications": "Notifications"
   },
   "roles": {
     "sales": "Sales",
@@ -62,7 +64,14 @@
     "dormantRequests": "Inactive customers · {count} request(s)",
     "dashboard": "Dashboard",
     "reports": "Reports",
-    "audit": "Audit log"
+    "audit": "Audit log",
+    "groupOverview": "Overview",
+    "groupSales": "Sales",
+    "groupCustomers": "Customers & products",
+    "groupManage": "Management",
+    "groupSystem": "System",
+    "mainNav": "Main navigation",
+    "pendingCount": "{count} pending"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -119,7 +128,12 @@
     "backupCodesHint": "Store these codes somewhere safe. Use them to sign in without your phone (each code works once). They are shown only once.",
     "done": "Done",
     "twoFactorEnabled": "Two-step verification is now on.",
-    "qrAlt": "QR code for setting up the authenticator app"
+    "qrAlt": "QR code for setting up the authenticator app",
+    "brandHeadline": "Quotations, approvals and follow-ups in one place",
+    "brandBody": "Create professional quotations, track every customer and close more deals — for the whole JCP sales team.",
+    "brandPoint1": "Quotation PDFs with company logo and signature",
+    "brandPoint2": "Price approvals and reminders",
+    "brandPoint3": "Follow-ups, sales reports and targets"
   },
   "home": {
     "welcome": "Welcome, {name}",
@@ -139,7 +153,19 @@
     "dormantOpen": "{count} open quotation(s)",
     "dormantDays": "{days} days",
     "dormantAll": "View all {count}",
-    "openDashboard": "Open the sales dashboard"
+    "openDashboard": "Open the sales dashboard",
+    "greetingMorning": "Good morning",
+    "greetingAfternoon": "Good afternoon",
+    "greetingEvening": "Good evening",
+    "summaryDue": "To follow up",
+    "summaryQuiet": "Quiet quotations",
+    "summaryDormant": "Inactive customers",
+    "quickActions": "Quick actions",
+    "newQuotation": "New quotation",
+    "newCustomer": "Add customer",
+    "viewQuotations": "All quotations",
+    "allCaughtUp": "All caught up — nothing needs your attention today.",
+    "overdueItems": "{count} overdue"
   },
   "users": {
     "title": "Users",

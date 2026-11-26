@@ -309,7 +309,7 @@ export function QuotationEditor({
             const approvedLine = !!approval[l.key] && !!covered[l.key];
             const err = lineError(i);
             return (
-              <li key={l.key} className={cn("grid gap-3 rounded-lg border p-3", reason && "border-amber-400 bg-amber-50/60 dark:bg-amber-950/20", err && "border-destructive")}>
+              <li key={l.key} className={cn("grid gap-3 rounded-lg border p-3", reason && "border-warning/30 bg-warning-soft", err && "border-destructive")}>
                 <div className="flex items-start gap-2">
                   <span className="mt-2 w-6 shrink-0 text-sm text-muted-foreground">{i + 1}.</span>
                   {l.productId ? (
@@ -359,13 +359,13 @@ export function QuotationEditor({
                   </div>
                 </div>
                 {approvedLine && (
-                  <p className="flex items-center gap-1.5 text-sm text-green-700 dark:text-green-400 lg:pl-8">
+                  <p className="flex items-center gap-1.5 text-sm text-success lg:pl-8">
                     <CheckCircle2Icon className="size-4 shrink-0" />
                     {t("lineApproved")}
                   </p>
                 )}
                 {reason && (
-                  <p className="flex items-center gap-1.5 text-sm text-amber-800 dark:text-amber-300 lg:pl-8">
+                  <p className="flex items-center gap-1.5 text-sm text-warning-soft-foreground lg:pl-8">
                     <AlertTriangleIcon className="size-4 shrink-0" />
                     {t(`approvalReason.${reason}`)}
                   </p>
@@ -400,13 +400,13 @@ export function QuotationEditor({
       </FormSection>
 
       {allApproved && (
-        <p className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200" role="status">
+        <p className="flex items-start gap-2 rounded-lg border border-success/30 bg-success-soft p-3 text-sm text-success-soft-foreground" role="status">
           <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
           {t("withinApprovalBanner")}
         </p>
       )}
       {anyApproval && (
-        <p className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200" role="status">
+        <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
           <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
           {t("needsApprovalBanner")}
         </p>
@@ -504,7 +504,7 @@ function CustomerPicker({ label, selected, locked, onSelect, onClear, error, det
   if (selected && (!open || locked)) {
     return (
       <Field label={label} error={error} hint={locked ? t("customerLockedHint") : undefined}>
-        <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2">
+        <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 bg-card">
           <div className="min-w-0">
             <div className="truncate font-medium">{selected.name}</div>
             <div className="text-xs text-muted-foreground">{selected.detail}</div>
@@ -522,7 +522,7 @@ function CustomerPicker({ label, selected, locked, onSelect, onClear, error, det
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input id={id} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("customerSearch")} className="pl-8" autoComplete="off" maxLength={100} />
       </div>
-      <div className="max-h-60 overflow-auto rounded-lg border" role="listbox" aria-label={label}>
+      <div className="max-h-60 overflow-auto rounded-lg border bg-card" role="listbox" aria-label={label}>
         {loading && hits.length === 0 && <p className="p-3 text-sm text-muted-foreground">…</p>}
         {!loading && hits.length === 0 && <p className="p-3 text-sm text-muted-foreground">{t("noCustomerFound")}</p>}
         {hits.map((c) => (
@@ -559,7 +559,7 @@ function ProductPicker({ onPick }: { onPick: (p: ProductHit) => void }) {
     );
   }
   return (
-    <div className="grid flex-1 gap-1.5 rounded-lg border p-2 sm:max-w-md">
+    <div className="grid flex-1 gap-1.5 rounded-lg border p-2 sm:max-w-md bg-card">
       <div className="flex gap-1">
         <div className="relative flex-1">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />

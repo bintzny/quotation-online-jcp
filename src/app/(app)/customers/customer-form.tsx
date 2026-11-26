@@ -105,7 +105,7 @@ export function CustomerForm({
             )}
           </div>
           {state?.duplicate && (
-            <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+            <p className="rounded-lg border border-destructive/25 bg-danger-soft p-3 text-sm text-destructive" role="alert">
               {tc("duplicateJuristic", { name: state.duplicate.name, owner: state.duplicate.ownerName ?? tc("duplicateNoOwner") })}
             </p>
           )}
@@ -138,7 +138,7 @@ export function CustomerForm({
         </FormSection>
 
         {state?.similar && state.similar.length > 0 && (
-          <div className="grid gap-2 rounded-lg border border-amber-500/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30" role="alert">
+          <div className="grid gap-2 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm" role="alert">
             <p className="font-medium">{tc("similarTitle")}</p>
             <p className="text-muted-foreground">{tc("similarHint")}</p>
             <ul className="list-disc pl-5">

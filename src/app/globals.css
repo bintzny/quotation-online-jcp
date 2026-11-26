@@ -6,6 +6,21 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-soft-foreground: var(--info-soft-foreground);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-soft-foreground: var(--danger-soft-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-brand-red: var(--brand-red);
+  --color-brand-lime: var(--brand-lime);
+  --color-brand-green: var(--brand-green);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
@@ -48,77 +63,63 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* JCP brand palette — taken from the company logo.
+   Green is the working colour (buttons, links, active menu); brand red is kept for the logo mark only,
+   so it is never confused with destructive/error red; lime is a small highlight. */
 :root {
-  --viz-proposed: #2a78d6;
-  --viz-won: #eb6834;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  --brand-green: #12703a;
+  --brand-green-deep: #0b3a22;
+  --brand-lime: #8cc63f;
+  --brand-red: #e3202a;
 
-.dark {
-  --viz-proposed: #3987e5;
-  --viz-won: #d95926;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --viz-proposed: #3a7fc1;
+  --viz-won: #1f8f4e;
+  --viz-target: #0f1a14;
+
+  --background: #f5f7f6;
+  --foreground: #101a14;
+  --card: #ffffff;
+  --card-foreground: #101a14;
+  --popover: #ffffff;
+  --popover-foreground: #101a14;
+  --primary: #12703a;
+  --primary-foreground: #ffffff;
+  --secondary: #edf2ef;
+  --secondary-foreground: #183324;
+  --muted: #eef1ef;
+  --muted-foreground: #56635b;
+  --accent: #e7f3ea;
+  --accent-foreground: #0e5a2e;
+  --destructive: #c62828;
+  --success: #1f8f4e;
+  --success-soft: #e5f4ea;
+  --success-soft-foreground: #11592f;
+  --warning: #b45309;
+  --warning-soft: #fdf1dc;
+  --warning-soft-foreground: #7a3d06;
+  --info: #2563a8;
+  --info-soft: #e5eef9;
+  --info-soft-foreground: #1b4677;
+  --danger-soft: #fbe7e7;
+  --danger-soft-foreground: #9b1c1c;
+  --border: #dfe5e1;
+  --input: #cfd8d2;
+  --ring: #12703a;
+  --chart-1: #12703a;
+  --chart-2: #3a7fc1;
+  --chart-3: #8cc63f;
+  --chart-4: #b45309;
+  --chart-5: #56635b;
+  --radius: 0.625rem;
+  --sidebar: #0b3a22;
+  --sidebar-foreground: #d7e6dc;
+  --sidebar-primary: #8cc63f;
+  --sidebar-primary-foreground: #0b3a22;
+  --sidebar-accent: rgb(255 255 255 / 0.09);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.1);
+  --sidebar-ring: #8cc63f;
+  --sidebar-muted: #8fb09b;
 }
 
 @layer base {
@@ -128,10 +129,24 @@
   body {
     @apply bg-background text-foreground;
   }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  button:not(:disabled), [role="button"]:not(:disabled), summary {
     cursor: pointer;
   }
   html {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brand-lime) 45%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

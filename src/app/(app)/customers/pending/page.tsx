@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { OwnerForm } from "../[id]/owner-form";
 import { Pagination } from "@/components/pagination";
 import { parsePage } from "@/lib/page-param";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations();
@@ -42,11 +43,11 @@ export default async function PendingOwnersPage({ searchParams }: PageProps<"/cu
       <p className="mb-2 text-sm text-muted-foreground">{t("customers.pendingHint")}</p>
       <p className="mb-6 text-xs text-muted-foreground">{t("common.resultCount", { count: total })}</p>
       {customers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("customers.noPending")}</p>
+        <EmptyState>{t("customers.noPending")}</EmptyState>
       ) : (
         <ul className="grid gap-4">
           {customers.map((c) => (
-            <li key={c.id} className="grid gap-3 rounded-xl border p-4">
+            <li key={c.id} className="grid gap-3 rounded-xl border p-4 bg-card">
               <div className="grid gap-0.5">
                 <Link href={`/customers/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
                 <span className="text-xs text-muted-foreground">

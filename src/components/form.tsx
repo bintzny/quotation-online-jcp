@@ -36,7 +36,7 @@ export function NativeSelect({ className, ...props }: React.ComponentProps<"sele
   return (
     <select
       className={cn(
-        "h-10 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 text-base outline-none transition-colors md:h-9 md:text-sm",
+        "h-10 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-base shadow-xs outline-none transition-colors md:h-9 md:text-sm",
         "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive",
         className,
@@ -68,8 +68,8 @@ export function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="grid min-w-0 gap-4 rounded-xl border p-4">
-      <legend className="px-1 text-sm font-semibold">{title}</legend>
+    <fieldset className="grid min-w-0 gap-4 rounded-xl border bg-card p-4 shadow-xs sm:p-5">
+      <legend className="float-left w-full text-base font-semibold">{title}</legend>
       {children}
     </fieldset>
   );

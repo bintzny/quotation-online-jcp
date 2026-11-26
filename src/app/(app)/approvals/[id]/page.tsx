@@ -34,7 +34,7 @@ export default async function ApprovalPage({ params }: PageProps<"/approvals/[id
     <div className="grid max-w-3xl gap-6">
       <PageHeader title={t("approvals.decideTitle")} backHref="/approvals" backLabel={t("approvals.title")} />
 
-      <section className="grid gap-1 rounded-xl border p-4">
+      <section className="grid gap-1 rounded-xl border p-4 bg-card">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <Link href={`/quotations/${q.id}`} className="font-mono font-semibold hover:underline">{number}</Link>
           <span className="text-lg font-semibold tabular-nums">{formatSatang(q.totalSatang)}</span>
@@ -52,14 +52,14 @@ export default async function ApprovalPage({ params }: PageProps<"/approvals/[id
       <FormSection title={t("approvals.flaggedTitle", { count: flagged.length })}>
         <ul className="grid gap-3">
           {flagged.map((l) => (
-            <li key={l.position} className="grid gap-2 rounded-lg border border-amber-300 bg-amber-50/60 p-3 text-sm dark:bg-amber-950/20">
+            <li key={l.position} className="grid gap-2 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-medium">{l.name}</span>
                 <span className="text-xs text-muted-foreground">{l.code ?? t("approvals.customLine")}</span>
               </div>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
                 <div><dt className="text-xs text-muted-foreground">{t("quotations.lineFields.quantity")}</dt><dd className="tabular-nums">{formatQuantity(l.quantityMilli)} {l.unit}</dd></div>
-                <div><dt className="text-xs text-muted-foreground">{t("approvals.netUnit")}</dt><dd className="font-semibold tabular-nums text-amber-800 dark:text-amber-300">{unit(l.finalSatang, l.quantityMilli)}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">{t("approvals.netUnit")}</dt><dd className="font-semibold tabular-nums text-warning-soft-foreground">{unit(l.finalSatang, l.quantityMilli)}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">{t("approvals.minPrice")}</dt><dd className="tabular-nums">{l.minPriceSatang != null ? formatSatang(l.minPriceSatang) : t("common.none")}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">{t("approvals.listPrice")}</dt><dd className="tabular-nums">{l.listPriceSatang != null ? formatSatang(l.listPriceSatang) : t("common.none")}</dd></div>
               </dl>
@@ -97,7 +97,7 @@ export default async function ApprovalPage({ params }: PageProps<"/approvals/[id
           lines={flagged.map((l) => ({ position: l.position, name: l.name, unit: l.unit, quantityMilli: l.quantityMilli, unitPriceSatang: l.unitPriceSatang, minPriceSatang: l.minPriceSatang }))}
         />
       ) : (
-        <section className="rounded-xl border p-4 text-sm">
+        <section className="rounded-xl border p-4 text-sm bg-card">
           <p className="font-medium">{t(`approvals.status.${r.status}`)}</p>
           {r.decidedAt && <p className="text-muted-foreground">{t("approvals.decidedBy", { name: r.decider ?? "?", date: format.dateTime(r.decidedAt, { dateStyle: "medium", timeStyle: "short" }) })}{r.selfDecided ? ` · ${t("approvals.selfDecided")}` : ""}</p>}
           {r.decisionNote && <p className="whitespace-pre-line">{t("approvals.note")}: {r.decisionNote}</p>}

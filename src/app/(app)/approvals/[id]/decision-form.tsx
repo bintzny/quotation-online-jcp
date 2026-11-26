@@ -69,9 +69,9 @@ export function DecisionForm({ approvalId, lines, selfRequest, pricing }: { appr
   }
 
   const modes: { key: Mode; label: string; icon: React.ReactNode; tone: string }[] = [
-    { key: "approve", label: t("approve"), icon: <CheckIcon />, tone: "data-[on=true]:border-green-600 data-[on=true]:bg-green-50 dark:data-[on=true]:bg-green-950/30" },
-    { key: "counter", label: t("counter"), icon: <HandCoinsIcon />, tone: "data-[on=true]:border-sky-600 data-[on=true]:bg-sky-50 dark:data-[on=true]:bg-sky-950/30" },
-    { key: "reject", label: t("reject"), icon: <XIcon />, tone: "data-[on=true]:border-destructive data-[on=true]:bg-destructive/5" },
+    { key: "approve", label: t("approve"), icon: <CheckIcon />, tone: "data-[on=true]:border-success data-[on=true]:bg-success-soft" },
+    { key: "counter", label: t("counter"), icon: <HandCoinsIcon />, tone: "data-[on=true]:border-info data-[on=true]:bg-info-soft" },
+    { key: "reject", label: t("reject"), icon: <XIcon />, tone: "data-[on=true]:border-destructive data-[on=true]:bg-danger-soft" },
   ];
   const noteError = state?.fieldErrors?.note ? (tv.has(state.fieldErrors.note) ? tv(state.fieldErrors.note) : tv("invalid")) : undefined;
 

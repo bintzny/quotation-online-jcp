@@ -38,7 +38,9 @@
     "add": "เพิ่ม",
     "view": "ดู",
     "all": "ทั้งหมด",
-    "resultCount": "{count} รายการ"
+    "resultCount": "{count} รายการ",
+    "brandTagline": "Packing Solution",
+    "notifications": "การแจ้งเตือน"
   },
   "roles": {
     "sales": "พนักงานขาย",
@@ -62,7 +64,14 @@
     "dormantRequests": "ลูกค้าที่หายไป · คำขอ {count}",
     "dashboard": "แดชบอร์ด",
     "reports": "รายงาน",
-    "audit": "ประวัติการแก้ไข"
+    "audit": "ประวัติการแก้ไข",
+    "groupOverview": "ภาพรวม",
+    "groupSales": "งานขาย",
+    "groupCustomers": "ลูกค้าและสินค้า",
+    "groupManage": "การจัดการ",
+    "groupSystem": "ระบบ",
+    "mainNav": "เมนูหลัก",
+    "pendingCount": "รอดำเนินการ {count} รายการ"
   },
   "auth": {
     "loginTitle": "เข้าสู่ระบบ",
@@ -119,7 +128,12 @@
     "backupCodesHint": "กรุณาบันทึกรหัสเหล่านี้ไว้ในที่ปลอดภัย ใช้เข้าสู่ระบบได้เมื่อไม่มีโทรศัพท์ (รหัสละ 1 ครั้ง) ระบบจะแสดงรหัสนี้เพียงครั้งเดียว",
     "done": "เสร็จสิ้น",
     "twoFactorEnabled": "เปิดใช้การยืนยันตัวตน 2 ขั้นตอนเรียบร้อยแล้ว",
-    "qrAlt": "QR Code สำหรับตั้งค่าแอปยืนยันตัวตน"
+    "qrAlt": "QR Code สำหรับตั้งค่าแอปยืนยันตัวตน",
+    "brandHeadline": "ใบเสนอราคา การอนุมัติ และการติดตามลูกค้า ครบในที่เดียว",
+    "brandBody": "สร้างใบเสนอราคาอย่างมืออาชีพ ติดตามลูกค้าทุกราย และปิดการขายได้มากขึ้น สำหรับทีมขาย JCP",
+    "brandPoint1": "ใบเสนอราคา PDF พร้อมโลโก้และลายเซ็นบริษัท",
+    "brandPoint2": "ขออนุมัติราคาและแจ้งเตือนอัตโนมัติ",
+    "brandPoint3": "ติดตามลูกค้า รายงานยอดขาย และเป้าหมาย"
   },
   "home": {
     "welcome": "ยินดีต้อนรับ คุณ{name}",
@@ -139,7 +153,19 @@
     "dormantOpen": "ใบเสนอราคาที่เปิดอยู่ {count} ใบ",
     "dormantDays": "{days} วัน",
     "dormantAll": "ดูทั้งหมด {count} ราย",
-    "openDashboard": "ดูแดชบอร์ดยอดขาย"
+    "openDashboard": "ดูแดชบอร์ดยอดขาย",
+    "greetingMorning": "สวัสดีตอนเช้า",
+    "greetingAfternoon": "สวัสดีตอนบ่าย",
+    "greetingEvening": "สวัสดีตอนเย็น",
+    "summaryDue": "ต้องติดตาม",
+    "summaryQuiet": "ใบเสนอราคาที่เงียบ",
+    "summaryDormant": "ลูกค้าที่หายไป",
+    "quickActions": "ทางลัด",
+    "newQuotation": "สร้างใบเสนอราคา",
+    "newCustomer": "เพิ่มลูกค้า",
+    "viewQuotations": "ใบเสนอราคาทั้งหมด",
+    "allCaughtUp": "เรียบร้อยทั้งหมด วันนี้ไม่มีงานที่ต้องติดตาม",
+    "overdueItems": "เลยกำหนด {count} รายการ"
   },
   "users": {
     "title": "ผู้ใช้งาน",

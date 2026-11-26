@@ -102,7 +102,7 @@ export function TransferList({ rows, owners }: { rows: TransferRow[]; owners: { 
                 {!r.ownerActive && <span className="ml-1 rounded bg-destructive/10 px-1 text-destructive">{t("ownerLeft")}</span>}
               </span>
               {r.lines.map((l, i) => <span key={i} className="text-xs text-muted-foreground">{l}</span>)}
-              {r.warn && <span className="text-xs text-amber-700 dark:text-amber-400">{r.warn}</span>}
+              {r.warn && <span className="text-xs text-warning">{r.warn}</span>}
             </div>
           </li>
         ))}

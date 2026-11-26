@@ -17,8 +17,8 @@ export async function generateMetadata() {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  APPROVED: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
+  PENDING: "bg-warning-soft text-warning-soft-foreground",
+  APPROVED: "bg-success-soft text-success-soft-foreground",
   REJECTED: "bg-muted text-muted-foreground",
   CANCELLED: "bg-muted text-muted-foreground",
 };
@@ -48,11 +48,11 @@ export default async function TransferRequestsPage() {
       <div className="grid max-w-3xl gap-6">
         <PageHeader title={t("myRequestsTitle")} />
         {mine.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{t("noMyRequests")}</p>
+          <p className="rounded-xl border border-dashed bg-card/60 px-4 py-8 text-center text-sm text-muted-foreground">{t("noMyRequests")}</p>
         ) : (
           <ul className="grid gap-2">
             {mine.map((r) => (
-              <li key={r.id} className="grid gap-1 rounded-lg border p-3 text-sm">
+              <li key={r.id} className="grid gap-1 rounded-lg border p-3 text-sm bg-card">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Link href={`/customers/${r.customer.id}`} className="font-medium hover:underline">{r.customer.name}</Link>
                   {badge(r.status)}
@@ -82,14 +82,14 @@ export default async function TransferRequestsPage() {
       <PageHeader title={t("requestsTitle")} backHref="/customers/dormant" backLabel={t("title")} />
       <p className="text-sm text-muted-foreground">{t("requestsHint")}</p>
       {open.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{t("noRequests")}</p>
+        <p className="rounded-xl border border-dashed bg-card/60 px-4 py-8 text-center text-sm text-muted-foreground">{t("noRequests")}</p>
       ) : (
         <ul className="grid gap-3">
           {open.map((r) => {
             const c = r.customer;
             const lastContact = lastContacts.get(c.id) ?? null;
             return (
-              <li key={r.id} className="grid gap-3 rounded-xl border p-4">
+              <li key={r.id} className="grid gap-3 rounded-xl border p-4 bg-card">
                 <div className="grid gap-1 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <Link href={`/customers/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
@@ -107,7 +107,7 @@ export default async function TransferRequestsPage() {
                     {c.status === "LOST" ? ` · ${t("statusLost")}` : ""}
                   </p>
                   {r.fromOwnerId !== c.ownerId && (
-                    <p className="text-xs text-amber-700 dark:text-amber-400">{t("ownerChangedSince", { name: nameOf(r.fromOwnerId) ?? "-" })}</p>
+                    <p className="text-xs text-warning">{t("ownerChangedSince", { name: nameOf(r.fromOwnerId) ?? "-" })}</p>
                   )}
                   <Link href={`/customers/${c.id}`} className="w-fit text-xs underline underline-offset-2">{t("viewContacts")}</Link>
                 </div>
@@ -123,7 +123,7 @@ export default async function TransferRequestsPage() {
           <h2 className="text-base font-semibold">{t("decidedTitle")}</h2>
           <ul className="grid gap-2">
             {decided.map((r) => (
-              <li key={r.id} className="grid gap-1 rounded-lg border p-3 text-sm">
+              <li key={r.id} className="grid gap-1 rounded-lg border p-3 text-sm bg-card">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Link href={`/customers/${r.customer.id}`} className="font-medium hover:underline">{r.customer.name}</Link>
                   {badge(r.status)}

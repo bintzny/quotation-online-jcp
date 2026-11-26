@@ -16,6 +16,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "./status-badge";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations();
@@ -57,7 +58,7 @@ export default async function QuotationsPage({ searchParams }: PageProps<"/quota
         )}
       />
 
-      <form method="get" role="search" className="mb-4 grid gap-2 sm:flex sm:flex-wrap sm:items-end">
+      <form method="get" role="search" className="mb-4 grid gap-2 rounded-xl border bg-card p-3 shadow-xs sm:p-4 sm:flex sm:flex-wrap sm:items-end">
         <Input name="q" defaultValue={q} placeholder={t("quotations.searchPlaceholder")} aria-label={t("common.search")} className="sm:max-w-xs" maxLength={100} />
         <NativeSelect name="status" defaultValue={status ?? ""} aria-label={t("quotations.statusLabel")} className="sm:w-44">
           <option value="">{t("quotations.allStatuses")}</option>
@@ -83,9 +84,34 @@ export default async function QuotationsPage({ searchParams }: PageProps<"/quota
       <p className="mb-3 text-xs text-muted-foreground">{t("common.resultCount", { count: total })}</p>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("quotations.empty")}</p>
+        <EmptyState>{t("quotations.empty")}</EmptyState>
       ) : (
-        <div className="rounded-xl border">
+        <>
+        {/* Phones: one card per quotation */}
+        <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs sm:hidden">
+          {items.map((r) => (
+            <li key={r.id}>
+              <Link href={`/quotations/${r.id}`} className="grid gap-1.5 px-4 py-3 transition-colors active:bg-accent/60">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-sm font-medium">{displayNumber(r.number, r.revision)}</span>
+                  <StatusBadge status={r.status} />
+                </span>
+                <span className="truncate text-sm">{r.customerName}</span>
+                <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">
+                    {format.dateTime(r.issueDate, { dateStyle: "medium" })}
+                    {showOwner ? ` · ${r.owner.name}` : ""}
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-foreground tabular-nums">{formatSatang(r.totalSatang)}</span>
+                </span>
+                {r.requiresApproval && r.status === "DRAFT" && (
+                  <span className="text-xs text-warning">{t("quotations.needsApprovalShort")}</span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-hidden rounded-xl border bg-card shadow-xs sm:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -116,7 +142,7 @@ export default async function QuotationsPage({ searchParams }: PageProps<"/quota
                     <div className="flex flex-wrap gap-1">
                       <StatusBadge status={r.status} />
                       {r.requiresApproval && r.status === "DRAFT" && (
-                        <span className="text-xs text-amber-700 dark:text-amber-400">{t("quotations.needsApprovalShort")}</span>
+                        <span className="text-xs text-warning">{t("quotations.needsApprovalShort")}</span>
                       )}
                     </div>
                   </TableCell>
@@ -125,6 +151,7 @@ export default async function QuotationsPage({ searchParams }: PageProps<"/quota
             </TableBody>
           </Table>
         </div>
+        </>
       )}
       <Pagination page={page} pageCount={pageCount} basePath="/quotations" params={{ q, status, owner: ownerId, company: companyId }} />
     </div>

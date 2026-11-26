@@ -69,7 +69,7 @@ export function CloseQuotation({ id, version, today, amount }: { id: string; ver
 
   return (
     <>
-      <Button onClick={() => setOpen("won")} disabled={pending} className="bg-green-700 text-white hover:bg-green-800">
+      <Button onClick={() => setOpen("won")} disabled={pending} className="bg-success text-white hover:bg-[color-mix(in_oklab,var(--success),black_15%)]">
         <TrophyIcon />
         {t("won")}
       </Button>
@@ -95,7 +95,7 @@ export function CloseQuotation({ id, version, today, amount }: { id: string; ver
               <Field label={t("poFile")} htmlFor="po-file" hint={t("poFileHint")} error={fileError ? tv(fileError) : wonErr("file")}>
                 <input id="po-file" type="file" accept={PO_ACCEPT} className="text-sm" onChange={(e) => { const p = pickPo(e); setFile(p.file); setFileError(p.error); }} />
               </Field>
-              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{t("finalWarning")}</p>
+              <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning-soft-foreground">{t("finalWarning")}</p>
               <FormStatus state={wonState} />
             </div>
             <DialogFooter>
@@ -134,7 +134,7 @@ export function CloseQuotation({ id, version, today, amount }: { id: string; ver
               <Field label={lost.reason === "OTHER" ? t("lostNoteRequired") : t("lostNote")} htmlFor="lost-note" error={lostErr("note")}>
                 <Textarea id="lost-note" rows={3} maxLength={500} value={lost.note} onChange={(e) => setLost({ ...lost, note: e.target.value })} />
               </Field>
-              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{t("finalWarning")}</p>
+              <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning-soft-foreground">{t("finalWarning")}</p>
               <FormStatus state={lostState} />
             </div>
             <DialogFooter>

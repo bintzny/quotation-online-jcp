@@ -16,6 +16,7 @@ import { NativeSelect } from "@/components/form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { DownloadIcon } from "lucide-react";
 import { TransferList } from "./transfer-list";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations();
@@ -63,7 +64,7 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
       <ul className="grid gap-2">
         {items.map((r) => (
           <li key={r.id}>
-            <Link href={`/customers/${r.id}`} className="grid gap-0.5 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50">
+            <Link href={`/customers/${r.id}`} className="grid gap-0.5 rounded-lg border bg-card p-3 text-sm transition-colors hover:border-primary/30 hover:bg-accent/40">
               <span className="font-medium">{r.name}</span>
               {describe(r).map((l, i) => <span key={i} className="text-xs text-muted-foreground">{l}</span>)}
             </Link>
@@ -81,7 +82,7 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/api/reports/dormant" className={buttonVariants({ variant: "outline", size: "sm" })}><DownloadIcon />{t("exportExcel")}</a>
         </div>
-        {active.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{t("emptyOwn")}</p> : list(active)}
+        {active.length === 0 ? <p className="rounded-xl border border-dashed bg-card/60 px-4 py-8 text-center text-sm text-muted-foreground">{t("emptyOwn")}</p> : list(active)}
         {snoozed.length > 0 && (
           <section className="grid gap-2">
             <h2 className="text-base font-semibold">{t("snoozedTitle")}</h2>
@@ -140,19 +141,19 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
       <p className="text-sm text-muted-foreground">{t("managerHint", { months })}</p>
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border p-3"><dt className="text-xs text-muted-foreground">{t("statDormant")}</dt><dd className="text-2xl font-semibold tabular-nums">{summary.total}</dd></div>
-        <div className="rounded-xl border p-3"><dt className="text-xs text-muted-foreground">{t("statNoContact")}</dt><dd className="text-2xl font-semibold tabular-nums">{summary.noContact}</dd></div>
-        <div className="rounded-xl border p-3"><dt className="text-xs text-muted-foreground">{t("statLost")}</dt><dd className="text-2xl font-semibold tabular-nums">{summary.lost}</dd></div>
-        <Link href="/customers/transfers" className="rounded-xl border p-3 transition-colors hover:bg-muted/50">
+        <div className="rounded-xl border p-3 bg-card"><dt className="text-xs text-muted-foreground">{t("statDormant")}</dt><dd className="text-2xl font-semibold tabular-nums">{summary.total}</dd></div>
+        <div className="rounded-xl border p-3 bg-card"><dt className="text-xs text-muted-foreground">{t("statNoContact")}</dt><dd className="text-2xl font-semibold tabular-nums">{summary.noContact}</dd></div>
+        <div className="rounded-xl border p-3 bg-card"><dt className="text-xs text-muted-foreground">{t("statLost")}</dt><dd className="text-2xl font-semibold tabular-nums">{summary.lost}</dd></div>
+        <Link href="/customers/transfers" className="rounded-xl border bg-card p-3 transition-colors hover:border-primary/30 hover:bg-accent/40">
           <dt className="text-xs text-muted-foreground">{t("statRequests")}</dt><dd className="text-2xl font-semibold tabular-nums">{pendingRequests}</dd>
         </Link>
       </dl>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="grid gap-2 rounded-xl border p-3">
+        <section className="grid gap-2 rounded-xl border p-3 bg-card">
           <h2 className="text-sm font-semibold">{t("perOwnerTitle")}</h2>
           {summary.perOwner.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("emptyAll")}</p>
+            <EmptyState>{t("emptyAll")}</EmptyState>
           ) : (
             <table className="w-full text-sm">
               <thead><tr className="text-left text-xs text-muted-foreground"><th className="py-1 font-normal">{t("ownerLabel")}</th><th className="py-1 text-right font-normal">{t("colCount")}</th><th className="py-1 text-right font-normal">{t("colNoContact")}</th></tr></thead>
@@ -171,7 +172,7 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
             </table>
           )}
         </section>
-        <section className="grid content-start gap-2 rounded-xl border p-3">
+        <section className="grid content-start gap-2 rounded-xl border p-3 bg-card">
           <h2 className="text-sm font-semibold">{t("reasonsTitle")}</h2>
           {summary.lost === 0 ? (
             <p className="text-sm text-muted-foreground">{t("noLost")}</p>
@@ -205,7 +206,7 @@ export default async function DormantCustomersPage({ searchParams }: PageProps<"
 
       {filtered.length > SHOWN && <p className="text-xs text-muted-foreground">{t("shownOf", { shown: SHOWN, total: filtered.length })}</p>}
       {shown.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{view === "lost" ? t("noLost") : t("emptyAll")}</p>
+        <p className="rounded-xl border border-dashed bg-card/60 px-4 py-8 text-center text-sm text-muted-foreground">{view === "lost" ? t("noLost") : t("emptyAll")}</p>
       ) : (
         <TransferList
           owners={owners.map((o) => ({ id: o.id, name: o.name }))}

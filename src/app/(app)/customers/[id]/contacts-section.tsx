@@ -67,7 +67,7 @@ export function ContactsSection({ customerId, contacts, canEdit }: { customerId:
       ) : (
         <ul className="grid gap-2">
           {contacts.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border p-3 text-sm">
+            <li key={c.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border p-3 text-sm bg-card">
               <div className="grid gap-0.5">
                 <span className="font-medium">
                   {c.name} {c.isPrimary && <Badge variant="secondary" className="ml-1">{t("customers.primary")}</Badge>}

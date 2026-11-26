@@ -12,9 +12,9 @@ export async function ApprovalHistory({ history }: { history: History }) {
   const format = await getFormatter();
   const when = (d: Date) => format.dateTime(d, { dateStyle: "medium", timeStyle: "short" });
   const tone: Record<string, string> = {
-    PENDING: "text-amber-700 dark:text-amber-400",
-    APPROVED: "text-green-700 dark:text-green-400",
-    COUNTERED: "text-green-700 dark:text-green-400",
+    PENDING: "text-warning",
+    APPROVED: "text-success",
+    COUNTERED: "text-success",
     REJECTED: "text-destructive",
     WITHDRAWN: "text-muted-foreground",
   };

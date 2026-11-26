@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFormatter, getTranslations } from "next-intl/server";
-import { CalendarClockIcon, FileSpreadsheetIcon, FilterIcon, HourglassIcon, TargetIcon, UserXIcon } from "lucide-react";
+import { CalendarClockIcon, FileSpreadsheetIcon, FilterIcon, HourglassIcon, PercentIcon, SendIcon, TargetIcon, TrophyIcon, UserXIcon } from "lucide-react";
 import { requireUser } from "@/server/session";
 import { prisma } from "@/server/db";
 import { formatSatang } from "@/server/domain/money";
@@ -82,7 +82,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         }
       />
 
-      <form method="get" className="-mt-2 grid gap-2 sm:flex sm:flex-wrap sm:items-end" aria-label={t("filters")}>
+      <form method="get" className="-mt-2 grid gap-3 rounded-xl border bg-card p-4 shadow-xs sm:flex sm:flex-wrap sm:items-end" aria-label={t("filters")}>
         <label className="grid gap-1 text-xs text-muted-foreground">
           {t("month")}
           <Input type="month" name="month" defaultValue={monthKey(f.month)} className="sm:w-44" required />
@@ -113,16 +113,17 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
       {/* Headline figures */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label={t("proposed")} value={money(tot.proposedSatang)} sub={t("quotationCount", { count: tot.proposedCount })} />
-        <Kpi label={t("won")} value={money(tot.wonSatang)} sub={t("quotationCount", { count: tot.wonCount })} />
+        <Kpi icon={<SendIcon />} label={t("proposed")} value={money(tot.proposedSatang)} sub={t("quotationCount", { count: tot.proposedCount })} />
+        <Kpi icon={<TrophyIcon />} tone="success" label={t("won")} value={money(tot.wonSatang)} sub={t("quotationCount", { count: tot.wonCount })} />
         <Kpi
+          icon={<PercentIcon />}
           label={t("winRate")}
           value={pct(wr.value)}
           sub={t("winRateSub", { byCount: pct(wr.count), closed: tot.wonCount + tot.lostCount + tot.expiredCount })}
         />
         <Card size="sm">
           <CardContent className="grid gap-1.5">
-            <span className="text-sm text-muted-foreground">{t("target")}</span>
+            <span className="flex items-center justify-between gap-2 text-sm text-muted-foreground">{t("target")}<span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground"><TargetIcon className="size-4" /></span></span>
             {f.companyId ? (
               <span className="text-sm">{t("targetNoCompany")}</span>
             ) : data.target === null ? (
@@ -133,7 +134,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 <Progress value={att ?? 0} label={t("targetProgress")} />
                 <span className="text-xs text-muted-foreground">{t("targetSub", { won: money(data.target.wonSatang), target: money(data.target.satang) })}</span>
                 {data.target.people < data.target.of && (
-                  <span className="text-xs text-amber-700 dark:text-amber-400">{t("targetPartial", { people: data.target.people, of: data.target.of })}</span>
+                  <span className="text-xs text-warning">{t("targetPartial", { people: data.target.people, of: data.target.of })}</span>
                 )}
               </>
             )}
@@ -184,7 +185,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           />
           <details className="text-sm">
             <summary className="cursor-pointer text-muted-foreground">{t("showTable")}</summary>
-            <div className="mt-2 overflow-x-auto rounded-lg border">
+            <div className="mt-2 overflow-x-auto rounded-lg border bg-card">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -224,7 +225,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             {data.owners.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("noData")}</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border">
+              <div className="overflow-x-auto rounded-lg border bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -313,14 +314,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               <ul className="grid gap-2">
                 {expiring.rows.map((q) => (
                   <li key={q.id}>
-                    <Link href={`/quotations/${q.id}`} className="flex items-start gap-3 rounded-lg border p-2.5 text-sm transition-colors hover:bg-muted/50">
+                    <Link href={`/quotations/${q.id}`} className="flex items-start gap-3 rounded-lg border bg-card p-2.5 text-sm transition-colors hover:border-primary/30 hover:bg-accent/40">
                       <span className="grid min-w-0 flex-1 gap-0.5">
                         <span className="truncate font-medium">{q.customerName}</span>
                         <span className="truncate text-xs text-muted-foreground">
                           {displayNumber(q.number, q.revision)} · {money(q.afterDiscountSatang)}{all ? ` · ${q.ownerName}` : ""}
                         </span>
                       </span>
-                      <span className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      <span className="shrink-0 text-xs font-medium text-warning">
                         {t("validUntil", { date: format.dateTime(q.validUntil, { dateStyle: "medium", timeZone: "UTC" }) })}
                       </span>
                     </Link>
@@ -341,12 +342,15 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Kpi({ label, value, sub, icon, tone }: { label: string; value: string; sub?: string; icon?: React.ReactNode; tone?: "success" }) {
   return (
     <Card size="sm">
       <CardContent className="grid gap-1">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className="text-2xl font-semibold tabular-nums">{value}</span>
+        <span className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+          {label}
+          {icon && <span className={cn("flex size-8 items-center justify-center rounded-lg [&>svg]:size-4", tone === "success" ? "bg-success-soft text-success" : "bg-muted text-muted-foreground")}>{icon}</span>}
+        </span>
+        <span className="text-2xl font-semibold tracking-tight tabular-nums">{value}</span>
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
       </CardContent>
     </Card>
@@ -355,8 +359,8 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 
 function ActionTile({ href, icon, label, count, sub }: { href: string; icon: React.ReactNode; label: string; count: number; sub?: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-muted/50">
-      <span className="text-muted-foreground">{icon}</span>
+    <Link href={href} className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:border-primary/30">
+      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", count > 0 ? "bg-warning-soft text-warning" : "bg-muted text-muted-foreground")}>{icon}</span>
       <span className="grid min-w-0 flex-1">
         <span className="text-sm">{label}</span>
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}

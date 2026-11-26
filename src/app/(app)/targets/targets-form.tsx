@@ -32,7 +32,7 @@ export function TargetsForm({ year, months, people }: { year: number; months: { 
   return (
     <form ref={formRef} action={action} className="grid gap-3">
       <input type="hidden" name="year" value={year} />
-      <div className="overflow-x-auto rounded-xl border">
+      <div className="overflow-x-auto rounded-xl border bg-card shadow-xs">
         <table className="w-full min-w-[64rem] text-sm">
           <thead>
             <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">

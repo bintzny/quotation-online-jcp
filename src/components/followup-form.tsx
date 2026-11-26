@@ -81,7 +81,7 @@ export function FollowupForm({
         <Textarea id={id("detail")} rows={3} maxLength={2000} required placeholder={t("detailPlaceholder")} value={values.detail} onChange={(e) => setValues({ ...values, detail: e.target.value })} />
       </Field>
       {dormantMonths !== undefined && (
-        <fieldset className="grid gap-2 rounded-lg border p-3">
+        <fieldset className="grid gap-2 rounded-lg border p-3 bg-card">
           <legend className="px-1 text-sm font-medium">{td("outcomeLegend", { months: dormantMonths })}</legend>
           <div className="grid gap-1 sm:grid-cols-2">
             {["", ...OUTCOMES].map((o) => (
@@ -92,7 +92,7 @@ export function FollowupForm({
             ))}
           </div>
           {values.outcome === "STILL_CUSTOMER" && <p className="text-xs text-muted-foreground">{td("snoozeHint")}</p>}
-          {losing && <p className="text-xs text-amber-700 dark:text-amber-400">{td("lostHint")}</p>}
+          {losing && <p className="text-xs text-warning">{td("lostHint")}</p>}
           {err("outcome") && <p className="text-sm text-destructive" role="alert">{err("outcome")}</p>}
         </fieldset>
       )}

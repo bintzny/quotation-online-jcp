@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/empty-state";
 
 export async function generateMetadata() {
   const t = await getTranslations();
@@ -67,9 +68,9 @@ export default async function CustomersPage({ searchParams }: PageProps<"/custom
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("customers.noCustomers")}</p>
+        <EmptyState>{t("customers.noCustomers")}</EmptyState>
       ) : (
-        <div className="rounded-xl border">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>
