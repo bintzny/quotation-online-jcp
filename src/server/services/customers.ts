@@ -75,6 +75,7 @@ export async function listCustomers(
       ownerName: r.owner?.name ?? null,
       notice: ownershipNotice(viewer, r).kind,
       canOpen: visible,
+      canEdit: canEditCustomer(viewer, r),
     };
   });
   return { items, total, page, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)), scope };

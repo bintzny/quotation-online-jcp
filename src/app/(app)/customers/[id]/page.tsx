@@ -147,14 +147,17 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
       {!data.canEdit && <p className="text-sm text-muted-foreground">{t("customers.readOnly")}</p>}
 
-      <CustomerForm
-        action={updateCustomerAction.bind(null, c.id)}
-        readOnly={!data.canEdit}
-        initial={{
-          type: c.type, name: c.name, taxId: c.taxId ?? "", branchCode: c.branchCode, branchName: c.branchName ?? "",
-          address: c.address, phone: c.phone ?? "", email: c.email ?? "", creditDays: c.creditDays, note: c.note ?? "", ownerId: "",
-        }}
-      />
+      {/* #edit: target of the pencil button in the customer list */}
+      <div id="edit" className="scroll-mt-24">
+        <CustomerForm
+          action={updateCustomerAction.bind(null, c.id)}
+          readOnly={!data.canEdit}
+          initial={{
+            type: c.type, name: c.name, taxId: c.taxId ?? "", branchCode: c.branchCode, branchName: c.branchName ?? "",
+            address: c.address, phone: c.phone ?? "", email: c.email ?? "", creditDays: c.creditDays, note: c.note ?? "", ownerId: "",
+          }}
+        />
+      </div>
 
       {c.expressCodes.length > 0 && (
         <p className="text-sm">

@@ -1,7 +1,7 @@
 import { parsePage } from "@/lib/page-param";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { PlusIcon } from "lucide-react";
+import { ChevronRightIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { requireUser } from "@/server/session";
 import { isManager } from "@/server/domain/customers";
 import { listCustomers, type CustomerScope } from "@/server/services/customers";
@@ -78,13 +78,15 @@ export default async function CustomersPage({ searchParams }: PageProps<"/custom
                 <TableHead className="hidden md:table-cell">{t("customers.taxId")}</TableHead>
                 <TableHead className="hidden sm:table-cell">{t("customers.owner")}</TableHead>
                 <TableHead>{t("customers.status")}</TableHead>
+                <TableHead className="w-12"><span className="sr-only">{t("common.edit")}</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} className="relative">
                   <TableCell className="whitespace-normal">
-                    <Link href={`/customers/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
+                    {/* The name link covers the whole row, so any click opens the customer */}
+                    <Link href={`/customers/${c.id}`} className="font-medium after:absolute after:inset-0 hover:underline">{c.name}</Link>
                     <div className="text-xs text-muted-foreground">
                       {c.type === "JURISTIC"
                         ? c.branchCode === "00000" ? t("customers.headOffice") : t("customers.branch", { code: c.branchCode })
@@ -101,6 +103,20 @@ export default async function CustomersPage({ searchParams }: PageProps<"/custom
                       <Badge variant="outline">{t("customers.statusLost")}</Badge>
                     ) : (
                       <Badge variant="secondary">{t("customers.statusActive")}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {c.canEdit ? (
+                      <Link
+                        href={`/customers/${c.id}#edit`}
+                        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative z-10 text-muted-foreground hover:text-primary")}
+                        aria-label={t("customers.editCustomer", { name: c.name })}
+                        title={t("common.edit")}
+                      >
+                        <PencilIcon />
+                      </Link>
+                    ) : (
+                      <ChevronRightIcon className="ml-auto size-4 text-muted-foreground" aria-hidden />
                     )}
                   </TableCell>
                 </TableRow>

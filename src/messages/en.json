@@ -371,6 +371,7 @@
     "candidates": "Salespeople found in the Express files",
     "chooseOwner": "Choose owner",
     "readOnly": "Read only. Only the owner, executives and administrators can edit.",
+    "editCustomer": "Edit {name}",
     "historyEmpty": "No owner changes yet.",
     "reason": {
       "CREATED": "Created the customer",
