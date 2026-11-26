@@ -18,7 +18,12 @@ RUN npm ci --no-audit --no-fund
 
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
+# Turbopack starts one worker per CPU it sees; on a builder with many CPUs and little memory
+# (Docker Desktop: 20 CPUs, 2 GB) that runs out of memory, so cap the threads and the JS heap.
 ENV NEXT_TELEMETRY_DISABLED=1 \
+    TOKIO_WORKER_THREADS=4 \
+    RAYON_NUM_THREADS=4 \
+    NODE_OPTIONS=--max-old-space-size=1536 \
     DATABASE_URL=postgresql://build:build@localhost:5432/build \
     BETTER_AUTH_SECRET=build-only-secret-not-used-at-runtime-000000
 COPY --from=deps /app/node_modules ./node_modules
