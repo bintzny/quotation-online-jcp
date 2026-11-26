@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { AlertTriangleIcon, CheckCircle2Icon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, Building2Icon, CheckCircle2Icon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import {
   previewPricingAction, saveQuotationAction, searchCustomersForQuoteAction, searchProductsForQuoteAction,
   type QuotationFormState,
@@ -239,48 +239,66 @@ export function QuotationEditor({
   return (
     <div className="grid gap-6">
       <FormSection title={t("sectionHeader")}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("company")} htmlFor={`${uid}-company`} error={fieldError("companyId")}>
-            <NativeSelect
-              id={`${uid}-company`}
-              value={companyId}
-              disabled={lockCompany || companies.length < 2}
-              onChange={(e) => {
-                const next = companies.find((c) => c.id === e.target.value);
-                change(setCompanyId)(e.target.value);
-                if (next && !quotationId) {
-                  setValidityDays(String(next.defaultValidityDays));
-                  setTerms(pdfLanguage === "EN" ? next.termsEn : next.terms);
-                }
-              }}
+        {/* Customer first: it drives contact, credit days and the number. */}
+        <CustomerPicker
+          label={t("customer")}
+          selected={customer}
+          locked={quotationId !== null}
+          onSelect={chooseCustomer}
+          onClear={() => change(setCustomer)(null)}
+          error={fieldError("customerId")}
+          detailOf={customerDetail}
+        />
+        <div className="grid grid-cols-2 gap-4 border-t pt-4 lg:grid-cols-4">
+          {lockCompany || companies.length < 2 ? (
+            <Field
+              label={t("company")}
+              error={fieldError("companyId")}
+              hint={lockCompany ? t("companyLockedHint") : undefined}
+              className="col-span-2 sm:col-span-1 lg:col-span-2"
             >
-              {companies.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-            </NativeSelect>
-          </Field>
-          <CustomerPicker
-            label={t("customer")}
-            selected={customer}
-            locked={quotationId !== null}
-            onSelect={chooseCustomer}
-            onClear={() => change(setCustomer)(null)}
-            error={fieldError("customerId")}
-            detailOf={customerDetail}
-          />
-          <Field label={t("contact")} htmlFor={`${uid}-contact`} error={fieldError("contactId")}>
+              <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border bg-muted/50 px-3 text-sm md:h-9">
+                <Building2Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="truncate">{company?.label}</span>
+              </div>
+            </Field>
+          ) : (
+            <Field label={t("company")} htmlFor={`${uid}-company`} error={fieldError("companyId")} className="col-span-2 sm:col-span-1 lg:col-span-2">
+              <NativeSelect
+                id={`${uid}-company`}
+                value={companyId}
+                onChange={(e) => {
+                  const next = companies.find((c) => c.id === e.target.value);
+                  change(setCompanyId)(e.target.value);
+                  if (next && !quotationId) {
+                    setValidityDays(String(next.defaultValidityDays));
+                    setTerms(pdfLanguage === "EN" ? next.termsEn : next.terms);
+                  }
+                }}
+              >
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </NativeSelect>
+            </Field>
+          )}
+          <Field
+            label={t("contact")}
+            htmlFor={`${uid}-contact`}
+            error={fieldError("contactId")}
+            hint={customer ? undefined : t("contactPickCustomerFirst")}
+            className="col-span-2 sm:col-span-1 lg:col-span-2"
+          >
             <NativeSelect id={`${uid}-contact`} value={contactId} onChange={(e) => change(setContactId)(e.target.value)} disabled={!customer}>
               <option value="">{tc("none")}</option>
               {customer?.contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </NativeSelect>
           </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label={t("validityDays")} htmlFor={`${uid}-validity`} error={fieldError("validityDays")}>
-              <Input id={`${uid}-validity`} inputMode="numeric" value={validityDays} onChange={(e) => change(setValidityDays)(e.target.value)} />
-            </Field>
-            <Field label={t("creditDays")} htmlFor={`${uid}-credit`} error={fieldError("creditDays")}>
-              <Input id={`${uid}-credit`} inputMode="numeric" value={creditDays} onChange={(e) => change(setCreditDays)(e.target.value)} />
-            </Field>
-          </div>
-          <Field label={t("pdfLanguage")} htmlFor={`${uid}-lang`} hint={t("pdfLanguageHint")}>
+          <Field label={t("validityDays")} htmlFor={`${uid}-validity`} error={fieldError("validityDays")}>
+            <Input id={`${uid}-validity`} inputMode="numeric" value={validityDays} onChange={(e) => change(setValidityDays)(e.target.value)} />
+          </Field>
+          <Field label={t("creditDays")} htmlFor={`${uid}-credit`} error={fieldError("creditDays")} hint={creditDays.trim() === "0" ? t("cash") : undefined}>
+            <Input id={`${uid}-credit`} inputMode="numeric" value={creditDays} onChange={(e) => change(setCreditDays)(e.target.value)} />
+          </Field>
+          <Field label={t("pdfLanguage")} htmlFor={`${uid}-lang`} hint={t("pdfLanguageHint")} className="col-span-2">
             <NativeSelect
               id={`${uid}-lang`}
               value={pdfLanguage}
@@ -470,6 +488,8 @@ function useSearch<T>(search: (q: string) => Promise<T[]>, enabled: boolean) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
+  // false until the first answer arrives, so the list shows "…" instead of "nothing found" during the debounce
+  const [answered, setAnswered] = useState(false);
   const seq = useRef(0);
   useEffect(() => {
     if (!enabled) return;
@@ -480,12 +500,12 @@ function useSearch<T>(search: (q: string) => Promise<T[]>, enabled: boolean) {
         const r = await search(q);
         if (mine === seq.current) setHits(r);
       } finally {
-        if (mine === seq.current) setLoading(false);
+        if (mine === seq.current) { setLoading(false); setAnswered(true); }
       }
     }, 250);
     return () => clearTimeout(timer);
   }, [q, enabled, search]);
-  return { q, setQ, hits, loading };
+  return { q, setQ, hits, loading: loading || !answered };
 }
 
 function CustomerPicker({ label, selected, locked, onSelect, onClear, error, detailOf }: {
@@ -504,10 +524,15 @@ function CustomerPicker({ label, selected, locked, onSelect, onClear, error, det
   if (selected && (!open || locked)) {
     return (
       <Field label={label} error={error} hint={locked ? t("customerLockedHint") : undefined}>
-        <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 bg-card">
-          <div className="min-w-0">
-            <div className="truncate font-medium">{selected.name}</div>
-            <div className="text-xs text-muted-foreground">{selected.detail}</div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border bg-accent/40 px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card text-primary shadow-xs" aria-hidden>
+              <Building2Icon className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="truncate font-medium">{selected.name}</div>
+              <div className="truncate text-xs text-muted-foreground">{selected.detail}</div>
+            </div>
           </div>
           {!locked && (
             <Button type="button" variant="outline" className="shrink-0" onClick={() => { setOpen(true); onClear(); }}>{t("changeCustomer")}</Button>
@@ -522,22 +547,30 @@ function CustomerPicker({ label, selected, locked, onSelect, onClear, error, det
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input id={id} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("customerSearch")} className="pl-8" autoComplete="off" maxLength={100} />
       </div>
-      <div className="max-h-60 overflow-auto rounded-lg border bg-card" role="listbox" aria-label={label}>
+      <div className="max-h-64 overflow-auto rounded-lg border bg-card shadow-xs" role="listbox" aria-label={label}>
         {loading && hits.length === 0 && <p className="p-3 text-sm text-muted-foreground">…</p>}
-        {!loading && hits.length === 0 && <p className="p-3 text-sm text-muted-foreground">{t("noCustomerFound")}</p>}
+        {!loading && hits.length === 0 && <p className="px-3 py-4 text-center text-sm text-muted-foreground">{t("noCustomerFound")}</p>}
         {hits.map((c) => (
           <button
             key={c.id}
             type="button"
             role="option"
             aria-selected={false}
-            className="block w-full border-b px-3 py-2.5 text-left text-sm last:border-0 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+            className="flex w-full items-center gap-3 border-b px-3 py-2.5 text-left text-sm transition-colors last:border-0 hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none"
             onClick={() => { onSelect(c); setOpen(false); }}
           >
-            <span className="font-medium">{c.name}</span>
-            <span className="block text-xs text-muted-foreground">
-              {detailOf(c)}{c.unowned ? ` · ${t("unownedCustomer")}` : ""}
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground" aria-hidden>
+              <Building2Icon className="size-4" />
             </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{c.name}</span>
+              <span className="block truncate text-xs text-muted-foreground">{detailOf(c)}</span>
+            </span>
+            {c.unowned && (
+              <span className="shrink-0 rounded-full bg-warning-soft px-2 py-0.5 text-xs text-warning-soft-foreground" title={t("unownedCustomer")}>
+                {t("unownedBadge")}
+              </span>
+            )}
           </button>
         ))}
       </div>
