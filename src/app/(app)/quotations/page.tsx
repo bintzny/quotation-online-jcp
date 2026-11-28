@@ -125,9 +125,10 @@ export default async function QuotationsPage({ searchParams }: PageProps<"/quota
             </TableHeader>
             <TableBody>
               {items.map((r) => (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} className="relative cursor-pointer">
                   <TableCell>
-                    <Link href={`/quotations/${r.id}`} className="font-mono text-sm font-medium hover:underline">
+                    {/* The number link covers the whole row, so a click anywhere opens the quotation */}
+                    <Link href={`/quotations/${r.id}`} className="font-mono text-sm font-medium after:absolute after:inset-0 hover:underline">
                       {displayNumber(r.number, r.revision)}
                     </Link>
                   </TableCell>

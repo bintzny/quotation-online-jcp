@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { AlertTriangleIcon, Building2Icon, CheckCircle2Icon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, Building2Icon, CheckCircle2Icon, ChevronDownIcon, PackageIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import {
   previewPricingAction, saveQuotationAction, searchCustomersForQuoteAction, searchProductsForQuoteAction,
   type QuotationFormState,
@@ -578,50 +578,136 @@ function CustomerPicker({ label, selected, locked, onSelect, onClear, error, det
   );
 }
 
+/**
+ * Product combobox: a search box that is always there, with the results in a dropdown that
+ * floats over the page (it no longer pushes the form down). Arrow keys move, Enter adds,
+ * Escape closes; after a pick the box clears so the next product can be typed straight away.
+ */
 function ProductPicker({ onPick }: { onPick: (p: ProductHit) => void }) {
   const t = useTranslations("quotations");
   const id = useId();
+  const listId = `${id}-list`;
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { q, setQ, hits, loading } = useSearch(searchProductsForQuoteAction, open);
-  if (!open) {
-    return (
-      <Button type="button" onClick={() => setOpen(true)}>
-        <PlusIcon />
-        {t("addProduct")}
-      </Button>
-    );
-  }
+
+  // Close when the user clicks or taps anywhere outside the box and its dropdown.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const pick = (p: ProductHit) => {
+    onPick(p);
+    setQ("");
+    setActive(0);
+    setOpen(false);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!open) setOpen(true);
+      else setActive((i) => Math.min(i + 1, hits.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      // Never submit the quotation form from this box.
+      e.preventDefault();
+      if (open && hits[active]) pick(hits[active]);
+    } else if (e.key === "Escape" && open) {
+      e.preventDefault();
+      setOpen(false);
+    }
+  };
+  // The button adds the highlighted product; with nothing to add yet it opens the list instead.
+  const onAddClick = () => {
+    if (open && hits[active]) pick(hits[active]);
+    else { setOpen(true); inputRef.current?.focus(); }
+  };
+  const activeId = open && hits[active] ? `${id}-opt-${active}` : undefined;
+
   return (
-    <div className="grid flex-1 gap-1.5 rounded-lg border p-2 sm:max-w-md bg-card">
-      <div className="flex gap-1">
-        <div className="relative flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input id={id} aria-label={t("productSearch")} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("productSearch")} className="pl-8" autoComplete="off" autoFocus maxLength={100} />
-        </div>
-        <Button type="button" variant="ghost" size="icon-lg" className="size-10 md:size-9" aria-label={t("closeSearch")} onClick={() => setOpen(false)}>
-          <XIcon />
-        </Button>
-      </div>
-      <div className="max-h-64 overflow-auto" role="listbox" aria-label={t("productSearch")}>
-        {loading && hits.length === 0 && <p className="p-2 text-sm text-muted-foreground">…</p>}
-        {!loading && hits.length === 0 && <p className="p-2 text-sm text-muted-foreground">{t("noProductFound")}</p>}
-        {hits.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            role="option"
-            aria-selected={false}
-            className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-            onClick={() => { onPick(p); setQ(""); }}
+    <div ref={wrapRef} className="flex flex-1 items-start gap-2 sm:max-w-lg">
+      <div className="relative min-w-0 flex-1">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          id={id}
+          role="combobox"
+          aria-label={t("addProduct")}
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeId}
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setActive(0); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder={t("productPickerPlaceholder")}
+          className="h-10 pr-9 pl-9"
+          autoComplete="off"
+          maxLength={100}
+        />
+        <ChevronDownIcon
+          aria-hidden
+          className={cn("pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground transition-transform", open && "rotate-180")}
+        />
+        {open && (
+          <div
+            id={listId}
+            role="listbox"
+            aria-label={t("productSearch")}
+            className="absolute inset-x-0 top-full z-30 mt-1 max-h-80 overflow-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
           >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">{p.name}</span>
-              <span className="text-xs text-muted-foreground">{p.code} · {p.unit}{p.isService ? ` · ${t("service")}` : ""}</span>
-            </span>
-            <span className="shrink-0 tabular-nums">{formatSatang(p.listPriceSatang)}</span>
-          </button>
-        ))}
+            {loading && hits.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">…</p>}
+            {!loading && hits.length === 0 && <p className="px-3 py-4 text-center text-sm text-muted-foreground">{t("noProductFound")}</p>}
+            {hits.map((p, i) => (
+              <button
+                key={p.id}
+                id={`${id}-opt-${i}`}
+                type="button"
+                role="option"
+                tabIndex={-1}
+                aria-selected={i === active}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm transition-colors",
+                  i === active ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+                )}
+                onPointerDown={(e) => e.preventDefault()} // keep focus in the search box
+                onPointerEnter={() => setActive(i)}
+                onClick={() => pick(p)}
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden>
+                  <PackageIcon className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{p.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{p.code} · {p.unit}{p.isService ? ` · ${t("service")}` : ""}</span>
+                </span>
+                <span className="shrink-0 tabular-nums">{formatSatang(p.listPriceSatang)}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+      <Button
+        type="button"
+        className="size-10 shrink-0 sm:w-auto"
+        onPointerDown={(e) => e.preventDefault()} // keep focus (and the highlighted row) in the search box
+        onClick={onAddClick}
+      >
+        <PlusIcon />
+        {/* icon-only on phones so the search box keeps its width */}
+        <span className="sr-only sm:not-sr-only">{t("addProduct")}</span>
+      </Button>
     </div>
   );
 }

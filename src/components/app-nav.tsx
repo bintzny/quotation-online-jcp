@@ -15,7 +15,6 @@ import {
   LayoutDashboardIcon,
   MenuIcon,
   PackageIcon,
-  PlusIcon,
   SettingsIcon,
   UploadIcon,
   UserRoundSearchIcon,
@@ -50,7 +49,6 @@ export type NavIcon = keyof typeof ICONS;
 export type NavItem = { href: string; label: string; icon: NavIcon; exact?: boolean; badge?: number; badgeLabel?: string };
 export type NavGroup = { label?: string; items: NavItem[] };
 export type NavBrand = { appName: string; tagline: string };
-export type NavCta = { href: string; label: string };
 
 function matches(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -116,25 +114,13 @@ function NavList({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () =
   );
 }
 
-function SidebarBody({ groups, brand, cta, onNavigate }: { groups: NavGroup[]; brand: NavBrand; cta?: NavCta; onNavigate?: () => void }) {
+function SidebarBody({ groups, brand, onNavigate }: { groups: NavGroup[]; brand: NavBrand; onNavigate?: () => void }) {
   const t = useTranslations("nav");
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <Link href="/" onClick={onNavigate} className="flex h-16 shrink-0 items-center px-4 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset">
         <BrandLockup appName={brand.appName} tagline={brand.tagline} inverted />
       </Link>
-      {cta && (
-        <div className="px-3 pb-2">
-          <Link
-            href={cta.href}
-            onClick={onNavigate}
-            className="flex h-10 items-center justify-center gap-2 rounded-lg bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-colors outline-none hover:bg-[color-mix(in_oklab,var(--brand-lime),white_15%)] focus-visible:ring-2 focus-visible:ring-white"
-          >
-            <PlusIcon className="size-4" />
-            {cta.label}
-          </Link>
-        </div>
-      )}
       <nav aria-label={t("mainNav")} className="min-h-0 flex-1 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         <NavList groups={groups} onNavigate={onNavigate} />
       </nav>
@@ -143,16 +129,16 @@ function SidebarBody({ groups, brand, cta, onNavigate }: { groups: NavGroup[]; b
 }
 
 /** Fixed sidebar from the lg breakpoint up. */
-export function AppSidebar({ groups, brand, cta }: { groups: NavGroup[]; brand: NavBrand; cta?: NavCta }) {
+export function AppSidebar({ groups, brand }: { groups: NavGroup[]; brand: NavBrand }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-sidebar-border lg:block">
-      <SidebarBody groups={groups} brand={brand} cta={cta} />
+      <SidebarBody groups={groups} brand={brand} />
     </aside>
   );
 }
 
 /** Menu button + slide-in sidebar below the lg breakpoint. */
-export function MobileNav({ groups, brand, cta }: { groups: NavGroup[]; brand: NavBrand; cta?: NavCta }) {
+export function MobileNav({ groups, brand }: { groups: NavGroup[]; brand: NavBrand }) {
   const t = useTranslations("nav");
   const [open, setOpen] = useState(false);
   return (
@@ -162,7 +148,7 @@ export function MobileNav({ groups, brand, cta }: { groups: NavGroup[]; brand: N
       </SheetTrigger>
       <SheetContent side="left" className="w-72 max-w-[85vw] gap-0 border-0 bg-sidebar p-0 text-sidebar-foreground">
         <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
-        <SidebarBody groups={groups} brand={brand} cta={cta} onNavigate={() => setOpen(false)} />
+        <SidebarBody groups={groups} brand={brand} onNavigate={() => setOpen(false)} />
       </SheetContent>
     </Sheet>
   );

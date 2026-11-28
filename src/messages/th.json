@@ -544,7 +544,7 @@
     "addCustomLine": "เพิ่มรายการพิมพ์เอง",
     "productSearch": "ค้นหารหัสหรือชื่อสินค้า",
     "noProductFound": "ไม่พบสินค้า",
-    "closeSearch": "ปิดการค้นหา",
+    "productPickerPlaceholder": "พิมพ์รหัสหรือชื่อสินค้า",
     "customerSearch": "ค้นหาชื่อลูกค้า เลขผู้เสียภาษี หรือรหัส Express",
     "customerSearchHint": "แสดงเฉพาะลูกค้าที่คุณดูแลและลูกค้าที่ยังไม่มีผู้ดูแล",
     "noCustomerFound": "ไม่พบลูกค้าที่คุณออกใบเสนอราคาได้",

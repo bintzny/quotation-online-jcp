@@ -544,7 +544,7 @@
     "addCustomLine": "Add free-typed item",
     "productSearch": "Search product code or name",
     "noProductFound": "No products found",
-    "closeSearch": "Close search",
+    "productPickerPlaceholder": "Type a product code or name",
     "customerSearch": "Search customer name, tax ID or Express code",
     "customerSearchHint": "Only customers you manage and customers without a salesperson are shown",
     "noCustomerFound": "No customers you can quote for",

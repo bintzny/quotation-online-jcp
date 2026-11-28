@@ -65,15 +65,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     ...(manage.length ? [{ label: isAdmin ? t("nav.groupSystem") : t("nav.groupManage"), items: manage }] : []),
   ];
   const brand = { appName: t("common.appName"), tagline: t("common.brandTagline") };
-  const cta = isSales ? { href: "/quotations/new", label: t("quotations.new") } : undefined;
 
   return (
     <div className="min-h-dvh">
-      <AppSidebar groups={groups} brand={brand} cta={cta} />
+      <AppSidebar groups={groups} brand={brand} />
       <div className="flex min-h-dvh flex-col lg:pl-64">
         <header className="sticky top-0 z-30 border-b bg-card/90 backdrop-blur supports-backdrop-filter:bg-card/80">
           <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 sm:px-6 lg:h-16 lg:px-8">
-            <MobileNav groups={groups} brand={brand} cta={cta} />
+            <MobileNav groups={groups} brand={brand} />
             <Link href="/" className="flex min-w-0 items-center gap-2 lg:hidden" aria-label={t("common.appName")}>
               <BrandMark className="size-8 rounded-md [&>span]:text-xs" />
               <span className="truncate text-sm font-semibold">{t("common.appName")}</span>
